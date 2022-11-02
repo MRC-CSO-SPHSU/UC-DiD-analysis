@@ -1,9 +1,9 @@
 library(tidyverse)
 library(tidymodels)
-library(SPHSUgraphs)
+# library(SPHSUgraphs)
 library(data.table)
 
-theme_set(theme_sphsu_light())
+# theme_set(theme_sphsu_light())
 
 
 # practice data from APS --------------------------------------------------
@@ -460,6 +460,7 @@ xg_tune_grid <- tune_class_xg |>
 
 tune_out_class_xg <- tune::tune_grid(recipie_tune_class_xg, resamples = cv_train_set, grid = xg_tune_grid)
 
+fit_resamples(recipie_tune_class_xg, cv_train_set)
 ### with MC resampling CV ---------------------------------------------
 
 
