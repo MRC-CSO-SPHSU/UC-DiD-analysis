@@ -461,9 +461,9 @@ xg_tune_grid <- tune_class_xg |>
 # Test timing of one
 start <- Sys.time()
 recipie_tune_class_xg |> 
-  update_model(set_args(tune_class_xg, trees = 1000, min_n = 10, tree_depth = 3)) |> 
+  update_model(set_args(tune_class_xg, trees = 10, min_n = 2, tree_depth = 2)) |> 
   fit_resamples(cv_train_set)
-Sys.time() - start
+Sys.time() - start  # super-simple model takes 43s on mine
 
 tune_out_class_xg <-
   tune_grid(
