@@ -495,7 +495,7 @@ collect_predictions(cv_class_xg) |>
   select(.pred_1, uc_receipt) |> 
   crossing(prob = seq(0.05, 0.95, 0.05)) |> 
   mutate(.pred_class = factor(.pred_1 > prob, labels = c("No UC", "UC")),
-         uc_receipt = factor(uc_receipt, levels = c("0", "1"), labels = c("No UC", "UC"))) |> 
+         uc_receipt = factor(uc_receipt, levels = c("1", "0"), labels = c("UC", "No UC"))) |> 
   group_by(uc_receipt, prob) |> 
   summarise(Pred_receive = sum(.pred_class == "UC")/n()) |> 
   ggplot(aes(prob, Pred_receive, colour = uc_receipt)) +
@@ -545,7 +545,7 @@ pred_class_log |>
   select(.pred_1, uc_receipt) |> 
   crossing(prob = c(0.1, 0.25, 0.5, 0.75, 0.9)) |> 
   mutate(.pred_class = factor(.pred_1 > prob, labels = c("No UC", "UC")),
-         uc_receipt = factor(uc_receipt, levels = c("0", "1"), labels = c("No UC", "UC"))) |> 
+         uc_receipt = factor(uc_receipt, levels = c("1", "0"), labels = c("UC", "No UC"))) |> 
   ggplot(aes(uc_receipt, fill = .pred_class)) +
   geom_bar(position = "fill") +
   scale_y_continuous("Perc predicted", labels = scales::label_percent()) +
@@ -571,7 +571,7 @@ collect_predictions(cv_class_log) |>
   select(.pred_1, uc_receipt) |> 
   crossing(prob = seq(0.05, 0.95, 0.05)) |> 
   mutate(.pred_class = factor(.pred_1 > prob, labels = c("No UC", "UC")),
-         uc_receipt = factor(uc_receipt, levels = c("0", "1"), labels = c("No UC", "UC"))) |> 
+         uc_receipt = factor(uc_receipt, levels = c("1", "0"), labels = c("UC", "No UC"))) |> 
   group_by(uc_receipt, prob) |> 
   summarise(Pred_receive = sum(.pred_class == "UC")/n()) |> 
   ggplot(aes(prob, Pred_receive, colour = uc_receipt)) +
