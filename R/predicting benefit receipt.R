@@ -1,9 +1,9 @@
 library(tidyverse)
 library(tidymodels)
-library(SPHSUgraphs)
+# library(SPHSUgraphs)
 library(data.table)
 
-theme_set(theme_sphsu_light())
+# theme_set(theme_sphsu_light())
 
 
 # practice data from APS --------------------------------------------------
@@ -458,7 +458,21 @@ xg_tune_grid <- tune_class_xg |>
   extract_parameter_set_dials() |> 
   grid_regular(levels = 2)
 
-tune_out_class_xg <- tune::tune_grid(recipie_tune_class_xg, resamples = cv_train_set, grid = xg_tune_grid)
+# Test timing of one
+start <- Sys.time()
+recipie_tune_class_xg |> 
+  update_model(set_args(tune_class_xg, trees = 1000, min_n = 10, tree_depth = 3)) |> 
+  fit_resamples(cv_train_set)
+Sys.time() - start
+
+tune_out_class_xg <-
+  tune_grid(
+    recipie_tune_class_xg,
+    resamples = cv_train_set,
+    grid = xg_tune_grid,
+    control = control_grid(parallel_over = "everything")
+  )
+
 
 ### with MC resampling CV ---------------------------------------------
 
