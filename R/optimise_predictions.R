@@ -221,7 +221,7 @@ message(Sys.time() - start)
 
 saveRDS(tune_out_class_xg |> select(-splits), "output/tune_out_class_xg.rds")
 
-# tune mlp model
+# tune mlp model ---------------------------------------------------------------
 
 tune_class_mlp <- mlp(hidden_units = tune(), penalty = tune(), epochs = tune()) |> 
   set_engine("nnet", trace = 0) |> 
