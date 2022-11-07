@@ -217,7 +217,7 @@ tune_out_class_xg <-
     control = control_grid(parallel_over = "everything",
                            verbose = TRUE)
   )
-message(Sys.time() - start)
+Sys.time() - start
 
 saveRDS(tune_out_class_xg |> select(-splits), "output/tune_out_class_xg.rds")
 
