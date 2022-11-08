@@ -179,6 +179,13 @@ cv_train_set <- vfold_cv(train_data, v = 5)
 
 # tuning grid -------------------------------------------------------------
 
+library(doParallel)
+
+parallel::detectCores()
+
+cl <- parallel::makePSOCKcluster(6)
+
+registerDoParallel(cl)
 
 tune_class_xg <- boost_tree(trees = tune(), tree_depth = tune(), min_n = tune(), mtry = tune()) |>
   set_engine("xgboost") |>
@@ -254,3 +261,5 @@ tune_out_class_mlp <-
   )
 
 saveRDS(tune_out_class_mlp |> select(-splits), "output/tune_out_class_mlp.rds")
+
+stopCluster(cl)
