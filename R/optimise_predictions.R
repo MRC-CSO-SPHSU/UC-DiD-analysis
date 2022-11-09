@@ -11,33 +11,6 @@ input_parts <-
   ) |>
   mutate(data = map(file, fread))
 
-
-input_parts |>
-  select(-file) |>
-  separate(year_policy,
-           into = c("year", "policy"),
-           sep = "_") |>
-  mutate(
-    data = map(data, summarise, across(starts_with("b") &
-                                         ends_with("_s"), sum)),
-    data = map(
-      data,
-      pivot_longer,
-      everything(),
-      names_to = "benefit",
-      values_to = "val"
-    )
-  ) |>
-  unnest(data) |>
-  group_by(benefit, policy) |>
-  summarise(val = sum(val), .groups = "drop_last") |>
-  mutate(diff_val = diff(val)) |>
-  filter(abs(diff_val) > 1000) |>
-  arrange(abs(diff_val)) |>
-  ggplot(aes(val, fct_inorder(benefit))) +
-  geom_bar(stat = "identity") +
-  facet_wrap(~ policy)
-
 full_pred_data <- input_parts |>
   select(-file) |>
   separate(year_policy,
@@ -140,7 +113,7 @@ ukmod_tidy <- full_pred_data |>
     ),
     house_ten = fct_collapse(factor(amrtn), Mortgaged = "1", Outright = "2", Rented = c("3", "4", "5"), Free = "6", Other = "7"),
     house_resp = factor(dhr, labels = c("No", "Yes")),
-    caring = fct_collapse(factor(lcr01), Yes = c("1", "2","3"), No = 0)
+    caring = factor(full_pred_data$lcr01 == 0, levels = c(TRUE, FALSE), labels = c("No", "Yes"))
   ) |> 
   select(
     year, idhh, uc_income, lba_income, uc_receipt,
