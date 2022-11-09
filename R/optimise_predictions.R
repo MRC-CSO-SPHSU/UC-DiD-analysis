@@ -153,21 +153,18 @@ cv_train_set <- vfold_cv(train_data, v = 5)
 # tuning grid -------------------------------------------------------------
 
 library(doParallel)
-library(doFuture)
+# library(doFuture)
 
 cores <- parallel::detectCores()
+cl <- parallel::makePSOCKcluster(floor(0.98*cores))
 
-
-
-# cl <- parallel::makePSOCKcluster(cores - 10)
-
-cl <- makeCluster(cores - 10)
-registerDoFuture()
-plan(cluster, workers = cl)
+# cl <- makeCluster(cores - 10)
+# registerDoFuture()
+# plan(multisession)
 
 # registerDoParallel(cl)
 
-tune_class_xg <- boost_tree(trees = tune(), tree_depth = tune(), min_n = tune()) |>
+tune_class_xg <- boost_tree(trees = 1000, tree_depth = 5, min_n = tune(), learn_rate = tune(), loss_reduction = tune()) |>
   set_engine("xgboost") |>
   set_mode("classification")
 
@@ -182,18 +179,18 @@ recipie_tune_class_xg <- workflow() |>
 
 xg_tune_grid <- tune_class_xg |> 
   extract_parameter_set_dials() |> 
-  grid_regular(levels = 4)
+  grid_regular(levels = 3)
 
-# xg_tune_grid <- crossing(tree_depth = 2:3, trees = c(100, 200))
+xg_tune_grid$min_n <- rep(c(40, 50, 60), 9)
 
 
-# Test timing of one
-start <- Sys.time()
-recipie_tune_class_xg |> 
-  update_model(set_args(tune_class_xg, trees = 10, min_n = 2, tree_depth = 2)) |> 
+# # Test timing of one
+# start <- Sys.time()
+recipie_tune_class_xg |>
+  update_model(set_args(tune_class_xg, trees = 10, min_n = 2, tree_depth = 2)) |>
   fit_resamples(cv_train_set, control = control_resamples(verbose = TRUE,
                                                           parallel_over = "everything"))
-Sys.time() - start   # super-simple model takes 43s on mine
+# Sys.time() - start   # super-simple model takes 43s on mine
 
 
 start <- Sys.time()
@@ -212,11 +209,11 @@ saveRDS(tune_out_class_xg |> select(-splits), "output/tune_out_class_xg.rds")
 
 # tune mlp model ---------------------------------------------------------------
 
-tune_class_mlp <- mlp(hidden_units = tune(), penalty = tune(), epochs = tune()) |> 
-  set_engine("nnet", trace = 0) |> 
+tune_class_mlp <- mlp(hidden_units = 7, penalty = 1, epochs = 700, activation = tune(), dropout = tune()) |> 
+  set_engine("brulee", trace = 0) |> 
   set_mode("classification")
 
-
+tune_simple_mlp <- mlp(engine = "keras", mode = "classification")
 
 recipie_tune_class_mlp <- workflow() |>
   add_model(tune_class_mlp) |>
@@ -228,9 +225,21 @@ recipie_tune_class_mlp <- workflow() |>
       children + employment + marsta
   )
 
-mlp_tune_grid <- tune_class_mlp |> 
-  extract_parameter_set_dials() |> 
+mlp_tune_grid <- tune_class_mlp |>
+  extract_parameter_set_dials() |>
   grid_regular(levels = 4)
+
+workflow() |> 
+  add_model(tune_simple_mlp) |> 
+  add_formula(
+    uc_receipt ~ age +
+      i_c +
+      region + disab + educ + gender + emp_len + seeking +
+      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
+      children + employment + marsta
+  ) |> 
+  fit(train_data)
+
 
 tune_out_class_mlp <- 
   tune_grid(
