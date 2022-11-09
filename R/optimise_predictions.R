@@ -153,12 +153,19 @@ cv_train_set <- vfold_cv(train_data, v = 5)
 # tuning grid -------------------------------------------------------------
 
 library(doParallel)
+library(doFuture)
 
-parallel::detectCores()
+cores <- parallel::detectCores()
 
-cl <- parallel::makePSOCKcluster(6)
 
-registerDoParallel(cl)
+
+# cl <- parallel::makePSOCKcluster(cores - 10)
+
+cl <- makeCluster(cores - 10)
+registerDoFuture()
+plan(cluster, workers = cl)
+
+# registerDoParallel(cl)
 
 tune_class_xg <- boost_tree(trees = tune(), tree_depth = tune(), min_n = tune()) |>
   set_engine("xgboost") |>
@@ -179,11 +186,13 @@ xg_tune_grid <- tune_class_xg |>
 
 # xg_tune_grid <- crossing(tree_depth = 2:3, trees = c(100, 200))
 
+
 # Test timing of one
 start <- Sys.time()
 recipie_tune_class_xg |> 
   update_model(set_args(tune_class_xg, trees = 10, min_n = 2, tree_depth = 2)) |> 
-  fit_resamples(cv_train_set, control = control_resamples(verbose = TRUE))
+  fit_resamples(cv_train_set, control = control_resamples(verbose = TRUE,
+                                                          parallel_over = "everything"))
 Sys.time() - start   # super-simple model takes 43s on mine
 
 
