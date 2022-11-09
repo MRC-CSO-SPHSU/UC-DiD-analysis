@@ -395,7 +395,7 @@ test_data |>
 
 ## XG boost ------------------------
 
-mod_class_xg <- boost_tree(tree_depth = 4, trees = 1000) |>
+mod_class_xg <- boost_tree(tree_depth = 5, trees = 1000, min_n = 40) |>
   set_engine("xgboost") |>
   set_mode("classification")
 
