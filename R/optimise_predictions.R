@@ -61,6 +61,7 @@ ukmod_tidy <- full_pred_data |>
       les == 8 ~ "Sick or disabled",
       TRUE ~ "Other"
     ),
+    student = if_else(les == 6, 1L, 0L),
     educ = case_when(
       dec == 4 ~ "Degree or College",
       dec == 3 ~ "Secondary",
@@ -118,6 +119,7 @@ ukmod_tidy <- full_pred_data |>
   select(
     year, idhh, uc_income, lba_income, uc_receipt,
     age, cit, disab, employment, educ, gender, marsta, region, emp_len, seeking, 
+    student,
     children, income, i_0, i_m, i_l, i_c, house_ten, house_resp, caring
   )
 
@@ -162,23 +164,23 @@ cl <- parallel::makePSOCKcluster(floor(0.98*cores))
 # registerDoFuture()
 # plan(multisession)
 
-# registerDoParallel(cl)
+registerDoParallel(cl)
 
 tune_class_xg <- boost_tree(trees = 1000, tree_depth = 5, min_n = tune(), learn_rate = tune(), loss_reduction = tune()) |>
   set_engine("xgboost") |>
   set_mode("classification")
 
-recipie_tune_class_xg <- workflow() |> 
+recipie_tune_class_xg <- workflow() |>
   add_model(tune_class_xg) |>
   add_formula(uc_receipt ~ age +
                 i_c +
-                region + disab + educ + gender + emp_len + seeking +
+                region + disab + educ + gender + emp_len + seeking + student +
                 house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
                 children + employment + marsta)
 
 
-xg_tune_grid <- tune_class_xg |> 
-  extract_parameter_set_dials() |> 
+xg_tune_grid <- tune_class_xg |>
+  extract_parameter_set_dials() |>
   grid_regular(levels = 3)
 
 xg_tune_grid$min_n <- rep(c(40, 50, 60), 9)
@@ -205,52 +207,41 @@ tune_out_class_xg <-
   )
 Sys.time() - start
 
-saveRDS(tune_out_class_xg |> select(-splits), "output/tune_out_class_xg.rds")
+saveRDS(tune_out_class_xg |> select(-splits), "output/tune_out_class_xg_up.rds")
 
 # tune mlp model ---------------------------------------------------------------
 
-tune_class_mlp <- mlp(hidden_units = 7, penalty = 1, epochs = 700, activation = tune(), dropout = tune()) |> 
-  set_engine("brulee", trace = 0) |> 
-  set_mode("classification")
-
-tune_simple_mlp <- mlp(engine = "keras", mode = "classification")
-
-recipie_tune_class_mlp <- workflow() |>
-  add_model(tune_class_mlp) |>
-  add_formula(
-    uc_receipt ~ age +
-      i_c +
-      region + disab + educ + gender + emp_len + seeking +
-      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-      children + employment + marsta
-  )
-
-mlp_tune_grid <- tune_class_mlp |>
-  extract_parameter_set_dials() |>
-  grid_regular(levels = 4)
-
-workflow() |> 
-  add_model(tune_simple_mlp) |> 
-  add_formula(
-    uc_receipt ~ age +
-      i_c +
-      region + disab + educ + gender + emp_len + seeking +
-      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-      children + employment + marsta
-  ) |> 
-  fit(train_data)
-
-
-tune_out_class_mlp <- 
-  tune_grid(
-    recipie_tune_class_mlp,
-    grid = mlp_tune_grid,
-    resamples = cv_train_set,
-    metrics = metric_set(roc_auc),
-    control = control_grid(parallel_over = "everything",
-                           verbose = TRUE)
-  )
-
-saveRDS(tune_out_class_mlp |> select(-splits), "output/tune_out_class_mlp.rds")
+# tune_class_mlp <- mlp(hidden_units = 7, epochs = 700, penalty = 1) |> 
+#   set_engine("nnet") |> 
+#   set_mode("classification")
+# 
+# recipie_tune_class_mlp <- workflow() |>
+#   add_model(tune_class_mlp) |>
+#   add_formula(
+#     uc_receipt ~ age +
+#       i_c +
+#       region + disab + educ + gender + emp_len + seeking + student +
+#       house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
+#       children + employment + marsta
+#   )
+# 
+# mlp_tune_grid <- tune_class_mlp |>
+#   extract_parameter_set_dials() |>
+#   grid_regular(levels = 4)
+# 
+# start <- Sys.time()
+# tune_out_class_mlp <-
+#   tune_grid(
+#     recipie_tune_class_mlp,
+#     grid = mlp_tune_grid,
+#     resamples = cv_train_set,
+#     metrics = metric_set(roc_auc),
+#     control = control_grid(parallel_over = "everything",
+#                            verbose = TRUE)
+#   )
+# Sys.time() - start
+# 
+# 
+# saveRDS(tune_out_class_mlp, "output/tune_out_class_mlp_up.rds")
 
 stopCluster(cl)
