@@ -166,7 +166,7 @@ cl <- parallel::makePSOCKcluster(floor(0.98*cores))
 
 registerDoParallel(cl)
 
-tune_class_xg <- boost_tree(trees = 1000, tree_depth = 5, min_n = tune(), learn_rate = tune(), loss_reduction = tune()) |>
+tune_class_xg <- boost_tree(trees = 1000, tree_depth = tune(), min_n = tune(), learn_rate = tune(), loss_reduction = tune()) |>
   set_engine("xgboost") |>
   set_mode("classification")
 
