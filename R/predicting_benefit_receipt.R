@@ -186,6 +186,7 @@ ukmod_tidy <- full_pred_data |>
       les == 8 ~ "Sick or disabled",
       TRUE ~ "Other"
     ),
+    student = if_else(les == 6, 1L, 0L),
     educ = case_when(
       dec == 4 ~ "Degree or College",
       dec == 3 ~ "Secondary",
@@ -513,7 +514,7 @@ recipie_class_log <- workflow() |>
     uc_receipt ~ poly(age, 2) +
       i_c +
       # poly(i_l, 4) + i_0 + i_m +
-      region + disab + educ + gender + emp_len + seeking +
+      region + disab + educ + gender + emp_len + seeking + student +
       house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
       children * employment * marsta
   )
@@ -524,7 +525,6 @@ fit_class_log <-
     data = train_data
   )
 
-fit_class_log
 
 pred_class_log <- test_data |> 
   bind_cols(predict(fit_class_log, new_data = test_data, type = "prob")) |> 
