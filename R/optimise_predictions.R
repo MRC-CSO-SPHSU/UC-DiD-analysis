@@ -178,7 +178,6 @@ recipie_tune_class_xg <- workflow() |>
                 house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
                 children + employment + marsta)
 
-
 xg_tune_grid <- tune_class_xg |>
   extract_parameter_set_dials() |>
   grid_regular(levels = 3)
@@ -207,6 +206,7 @@ tune_out_class_xg <-
                            verbose = TRUE)
   )
 Sys.time() - start
+
 
 saveRDS(tune_out_class_xg |> select(-splits), "output/tune_out_class_xg_up.rds")
 
