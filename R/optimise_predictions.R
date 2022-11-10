@@ -11,33 +11,6 @@ input_parts <-
   ) |>
   mutate(data = map(file, fread))
 
-
-input_parts |>
-  select(-file) |>
-  separate(year_policy,
-           into = c("year", "policy"),
-           sep = "_") |>
-  mutate(
-    data = map(data, summarise, across(starts_with("b") &
-                                         ends_with("_s"), sum)),
-    data = map(
-      data,
-      pivot_longer,
-      everything(),
-      names_to = "benefit",
-      values_to = "val"
-    )
-  ) |>
-  unnest(data) |>
-  group_by(benefit, policy) |>
-  summarise(val = sum(val), .groups = "drop_last") |>
-  mutate(diff_val = diff(val)) |>
-  filter(abs(diff_val) > 1000) |>
-  arrange(abs(diff_val)) |>
-  ggplot(aes(val, fct_inorder(benefit))) +
-  geom_bar(stat = "identity") +
-  facet_wrap(~ policy)
-
 full_pred_data <- input_parts |>
   select(-file) |>
   separate(year_policy,
@@ -88,6 +61,7 @@ ukmod_tidy <- full_pred_data |>
       les == 8 ~ "Sick or disabled",
       TRUE ~ "Other"
     ),
+    student = if_else(les == 6, 1L, 0L),
     educ = case_when(
       dec == 4 ~ "Degree or College",
       dec == 3 ~ "Secondary",
@@ -140,11 +114,12 @@ ukmod_tidy <- full_pred_data |>
     ),
     house_ten = fct_collapse(factor(amrtn), Mortgaged = "1", Outright = "2", Rented = c("3", "4", "5"), Free = "6", Other = "7"),
     house_resp = factor(dhr, labels = c("No", "Yes")),
-    caring = fct_collapse(factor(lcr01), Yes = c("1", "2","3"), No = 0)
+    caring = factor(full_pred_data$lcr01 == 0, levels = c(TRUE, FALSE), labels = c("No", "Yes"))
   ) |> 
   select(
     year, idhh, uc_income, lba_income, uc_receipt,
     age, cit, disab, employment, educ, gender, marsta, region, emp_len, seeking, 
+    student,
     children, income, i_0, i_m, i_l, i_c, house_ten, house_resp, caring
   )
 
@@ -179,32 +154,45 @@ cv_train_set <- vfold_cv(train_data, v = 5)
 
 # tuning grid -------------------------------------------------------------
 
+library(doParallel)
+# library(doFuture)
 
-tune_class_xg <- boost_tree(trees = tune(), tree_depth = tune(), min_n = tune(), mtry = tune()) |>
+cores <- parallel::detectCores()
+cl <- parallel::makePSOCKcluster(floor(0.98*cores))
+
+# cl <- makeCluster(cores - 10)
+# registerDoFuture()
+# plan(multisession)
+
+registerDoParallel(cl)
+
+tune_class_xg <- boost_tree(trees = 1000, tree_depth = tune(), min_n = tune(), learn_rate = tune(), loss_reduction = tune()) |>
   set_engine("xgboost") |>
   set_mode("classification")
 
-recipie_tune_class_xg <- workflow() |> 
+recipie_tune_class_xg <- workflow() |>
   add_model(tune_class_xg) |>
   add_formula(uc_receipt ~ age +
                 i_c +
-                region + disab + educ + gender + emp_len + seeking +
+                region + disab + educ + gender + emp_len + seeking + student +
                 house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
                 children + employment + marsta)
 
+xg_tune_grid <- tune_class_xg |>
+  extract_parameter_set_dials() |>
+  grid_regular(levels = 3)
 
-xg_tune_grid <- tune_class_xg |> 
-  extract_parameter_set_dials() |> 
-  grid_regular(levels = 4)
+xg_tune_grid$min_n <- rep(c(40, 50, 60), 27)
+xg_tune_grid$tree_depth <- rep(rep(c(5, 10, 15), each = 3), 9)
 
-# xg_tune_grid <- crossing(tree_depth = 2:3, trees = c(100, 200))
 
-# Test timing of one
-start <- Sys.time()
-recipie_tune_class_xg |> 
-  update_model(set_args(tune_class_xg, trees = 10, min_n = 2, tree_depth = 2)) |> 
-  fit_resamples(cv_train_set, control = control_resamples(verbose = TRUE))
-Sys.time() - start   # super-simple model takes 43s on mine
+# # Test timing of one
+# start <- Sys.time()
+# recipie_tune_class_xg |>
+#   update_model(set_args(tune_class_xg, trees = 10, min_n = 2, tree_depth = 2)) |>
+#   fit_resamples(cv_train_set, control = control_resamples(verbose = TRUE,
+#                                                           parallel_over = "everything"))
+# Sys.time() - start   # super-simple model takes 43s on mine
 
 
 start <- Sys.time()
@@ -212,45 +200,49 @@ tune_out_class_xg <-
   tune_grid(
     recipie_tune_class_xg,
     grid = xg_tune_grid,
-    resamples = cv_train_set,
+    resamples = mc_train_set,
     metrics = metric_set(roc_auc),
     control = control_grid(parallel_over = "everything",
                            verbose = TRUE)
   )
 Sys.time() - start
 
-saveRDS(tune_out_class_xg |> select(-splits), "output/tune_out_class_xg.rds")
+
+saveRDS(tune_out_class_xg |> select(-splits), "output/tune_out_class_xg_up.rds")
 
 # tune mlp model ---------------------------------------------------------------
 
-tune_class_mlp <- mlp(hidden_units = tune(), penalty = tune(), epochs = tune()) |> 
-  set_engine("nnet", trace = 0) |> 
-  set_mode("classification")
+# tune_class_mlp <- mlp(hidden_units = 7, epochs = 700, penalty = 1) |> 
+#   set_engine("nnet") |> 
+#   set_mode("classification")
+# 
+# recipie_tune_class_mlp <- workflow() |>
+#   add_model(tune_class_mlp) |>
+#   add_formula(
+#     uc_receipt ~ age +
+#       i_c +
+#       region + disab + educ + gender + emp_len + seeking + student +
+#       house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
+#       children + employment + marsta
+#   )
+# 
+# mlp_tune_grid <- tune_class_mlp |>
+#   extract_parameter_set_dials() |>
+#   grid_regular(levels = 4)
+# 
+# start <- Sys.time()
+# tune_out_class_mlp <-
+#   tune_grid(
+#     recipie_tune_class_mlp,
+#     grid = mlp_tune_grid,
+#     resamples = cv_train_set,
+#     metrics = metric_set(roc_auc),
+#     control = control_grid(parallel_over = "everything",
+#                            verbose = TRUE)
+#   )
+# Sys.time() - start
+# 
+# 
+# saveRDS(tune_out_class_mlp, "output/tune_out_class_mlp_up.rds")
 
-
-
-recipie_tune_class_mlp <- workflow() |>
-  add_model(tune_class_mlp) |>
-  add_formula(
-    uc_receipt ~ age +
-      i_c +
-      region + disab + educ + gender + emp_len + seeking +
-      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-      children + employment + marsta
-  )
-
-mlp_tune_grid <- tune_class_mlp |> 
-  extract_parameter_set_dials() |> 
-  grid_regular(levels = 4)
-
-tune_out_class_mlp <- 
-  tune_grid(
-    recipie_tune_class_mlp,
-    grid = mlp_tune_grid,
-    resamples = cv_train_set,
-    metrics = metric_set(roc_auc),
-    control = control_grid(parallel_over = "everything",
-                           verbose = TRUE)
-  )
-
-saveRDS(tune_out_class_mlp |> select(-splits), "output/tune_out_class_mlp.rds")
+stopCluster(cl)
