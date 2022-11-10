@@ -183,15 +183,16 @@ xg_tune_grid <- tune_class_xg |>
   extract_parameter_set_dials() |>
   grid_regular(levels = 3)
 
-xg_tune_grid$min_n <- rep(c(40, 50, 60), 9)
+xg_tune_grid$min_n <- rep(c(40, 50, 60), 27)
+xg_tune_grid$tree_depth <- rep(rep(c(5, 10, 15), each = 3), 9)
 
 
 # # Test timing of one
 # start <- Sys.time()
-recipie_tune_class_xg |>
-  update_model(set_args(tune_class_xg, trees = 10, min_n = 2, tree_depth = 2)) |>
-  fit_resamples(cv_train_set, control = control_resamples(verbose = TRUE,
-                                                          parallel_over = "everything"))
+# recipie_tune_class_xg |>
+#   update_model(set_args(tune_class_xg, trees = 10, min_n = 2, tree_depth = 2)) |>
+#   fit_resamples(cv_train_set, control = control_resamples(verbose = TRUE,
+#                                                           parallel_over = "everything"))
 # Sys.time() - start   # super-simple model takes 43s on mine
 
 
@@ -200,7 +201,7 @@ tune_out_class_xg <-
   tune_grid(
     recipie_tune_class_xg,
     grid = xg_tune_grid,
-    resamples = cv_train_set,
+    resamples = mc_train_set,
     metrics = metric_set(roc_auc),
     control = control_grid(parallel_over = "everything",
                            verbose = TRUE)
