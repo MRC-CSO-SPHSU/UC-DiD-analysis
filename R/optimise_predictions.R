@@ -1,5 +1,6 @@
 library(tidyverse)
 library(tidymodels)
+library(furrr)
 library(data.table)
 
 # importing ukmod data ----------------------------------------------------------
@@ -9,7 +10,7 @@ input_parts <-
     file = file.path("data/ukmod_out", dir("data/ukmod_out")),
     year_policy = str_extract(file, "(?<=uk_)\\w*(?=\\.txt)")
   ) |>
-  mutate(data = map(file, fread))
+  mutate(data = future_map(file, fread))
 
 full_pred_data <- input_parts |>
   select(-file) |>
@@ -155,14 +156,9 @@ cv_train_set <- vfold_cv(train_data, v = 5)
 # tuning grid -------------------------------------------------------------
 
 library(doParallel)
-# library(doFuture)
 
 cores <- parallel::detectCores()
 cl <- parallel::makePSOCKcluster(floor(0.98*cores))
-
-# cl <- makeCluster(cores - 10)
-# registerDoFuture()
-# plan(multisession)
 
 registerDoParallel(cl)
 
@@ -186,15 +182,6 @@ xg_tune_grid$min_n <- rep(c(40, 50, 60), 27)
 xg_tune_grid$tree_depth <- rep(rep(c(5, 10, 15), each = 3), 9)
 
 
-# # Test timing of one
-# start <- Sys.time()
-# recipie_tune_class_xg |>
-#   update_model(set_args(tune_class_xg, trees = 10, min_n = 2, tree_depth = 2)) |>
-#   fit_resamples(cv_train_set, control = control_resamples(verbose = TRUE,
-#                                                           parallel_over = "everything"))
-# Sys.time() - start   # super-simple model takes 43s on mine
-
-
 start <- Sys.time()
 tune_out_class_xg <-
   tune_grid(
@@ -208,41 +195,7 @@ tune_out_class_xg <-
 Sys.time() - start
 
 
-saveRDS(tune_out_class_xg |> select(-splits), "output/tune_out_class_xg_up.rds")
+saveRDS(tune_out_class_xg, "output/tune_out_class_xg_up.rds")
 
-# tune mlp model ---------------------------------------------------------------
-
-# tune_class_mlp <- mlp(hidden_units = 7, epochs = 700, penalty = 1) |> 
-#   set_engine("nnet") |> 
-#   set_mode("classification")
-# 
-# recipie_tune_class_mlp <- workflow() |>
-#   add_model(tune_class_mlp) |>
-#   add_formula(
-#     uc_receipt ~ age +
-#       i_c +
-#       region + disab + educ + gender + emp_len + seeking + student +
-#       house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-#       children + employment + marsta
-#   )
-# 
-# mlp_tune_grid <- tune_class_mlp |>
-#   extract_parameter_set_dials() |>
-#   grid_regular(levels = 4)
-# 
-# start <- Sys.time()
-# tune_out_class_mlp <-
-#   tune_grid(
-#     recipie_tune_class_mlp,
-#     grid = mlp_tune_grid,
-#     resamples = cv_train_set,
-#     metrics = metric_set(roc_auc),
-#     control = control_grid(parallel_over = "everything",
-#                            verbose = TRUE)
-#   )
-# Sys.time() - start
-# 
-# 
-# saveRDS(tune_out_class_mlp, "output/tune_out_class_mlp_up.rds")
 
 stopCluster(cl)
