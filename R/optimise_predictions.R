@@ -253,4 +253,4 @@ tune_out_class_mlp <-
                            verbose = TRUE)
   )
 
-saveRDS(tune_out_class_mlp |> select(-splits), "output/tune_out_class_mlp.rds")
+saveRDS(tune_out_class_mlp, "output/tune_out_class_mlp.rds")
