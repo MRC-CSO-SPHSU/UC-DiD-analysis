@@ -1,6 +1,7 @@
 library(tidyverse)
 library(tidymodels)
 # library(SPHSUgraphs)
+library(furrr)
 library(data.table)
 
 # theme_set(theme_sphsu_light())
@@ -24,7 +25,7 @@ input_parts <-
     file = file.path("data/ukmod_out", dir("data/ukmod_out")),
     year_policy = str_extract(file, "(?<=uk_)\\w*(?=\\.txt)")
   ) |>
-  mutate(data = map(file, fread))
+  mutate(data = future_map(file, fread))
 
 
 input_parts |>
