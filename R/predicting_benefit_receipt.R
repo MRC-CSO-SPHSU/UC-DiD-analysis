@@ -240,11 +240,11 @@ ukmod_tidy <- full_pred_data |>
     ),
     house_ten = fct_collapse(factor(amrtn), Mortgaged = "1", Outright = "2", Rented = c("3", "4", "5"), Free = "6", Other = "7"),
     house_resp = factor(dhr, labels = c("No", "Yes")),
-    caring = fct_collapse(factor(lcr01), Yes = c("1", "2","3"), No = 0)
+    caring = factor(full_pred_data$lcr01 == 0, levels = c(TRUE, FALSE), labels = c("No", "Yes"))
   ) |> 
   select(
     year, idhh, uc_income, lba_income, uc_receipt,
-    age, cit, disab, employment, educ, gender, marsta, region, emp_len, seeking, 
+    age, cit, disab, employment, educ, gender, marsta, region, emp_len, seeking, student,
     children, income, i_0, i_m, i_l, i_c, house_ten, house_resp, caring
   )
 
@@ -515,9 +515,9 @@ recipie_class_log <- workflow() |>
     uc_receipt ~ poly(age, 2) +
       i_c +
       # poly(i_l, 4) + i_0 + i_m +
-      region + disab + educ + gender + emp_len + seeking + student +
-      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-      children * employment * marsta
+      region + disab + educ + gender + emp_len + seeking + student + student:employment + student:seeking + student:caring +
+      house_ten + house_resp + n_hh_emp + n_hh_unemp + n_hh_inact +
+      children * employment * marsta * caring
   )
 
 fit_class_log <- 
@@ -554,6 +554,13 @@ pred_class_log |>
 
 ### with Monte Carlo resampling for cross-validation ----------------------
 
+library(doParallel)
+
+cores <- parallel::detectCores()
+cl <- parallel::makePSOCKcluster(floor(0.98*cores))
+
+registerDoParallel(cl)
+
 cv_class_log <- recipie_class_log |> fit_resamples(mc_train_set, control = control_resamples(save_pred = TRUE))
 
 collect_metrics(cv_class_log)
@@ -577,3 +584,5 @@ collect_predictions(cv_class_log) |>
   summarise(Pred_receive = sum(.pred_class == "UC")/n()) |> 
   ggplot(aes(prob, Pred_receive, colour = uc_receipt)) +
   geom_line()  
+
+stopCluster(cl)
