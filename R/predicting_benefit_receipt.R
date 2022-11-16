@@ -189,10 +189,10 @@ ukmod_tidy <- full_pred_data |>
     ),
     student = if_else(les == 6, 1L, 0L),
     educ = case_when(
-      dec == 4 ~ "Degree or College",
-      dec == 3 ~ "Secondary",
-      dec == 2 ~ "Secondary",
-      dec == 5 ~ "Tertiary",
+      deh == 4 ~ "Degree or College",
+      deh == 3 ~ "Secondary",
+      deh == 2 ~ "Lower Secondary",
+      deh == 5 ~ "Tertiary",
       TRUE ~ "None"
     ),
     gender = factor(
@@ -397,21 +397,22 @@ test_data |>
 
 ## XG boost ------------------------
 
-mod_class_xg <- boost_tree(tree_depth = 5, trees = 1000, min_n = 40) |>
+mod_class_xg <- boost_tree(tree_depth = 10, trees = 1000, min_n = 40,
+                           learn_rate = 0.0178, loss_reduction = 0.0000562) |>
   set_engine("xgboost") |>
   set_mode("classification")
 
-recipie_class_xg <- workflow() |>
+recipe_class_xg <- workflow() |>
   add_model(mod_class_xg) |>
   add_formula(
     uc_receipt ~ age +
       i_c +
-      region + disab + educ + gender + emp_len + seeking +
+      region + disab + educ + gender + emp_len + seeking + student +
       house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
       children + employment + marsta
   )
 
-fit_class_xg <- recipie_class_xg |>
+fit_class_xg <- recipe_class_xg |>
   fit(data = train_data)
 
 pred_class_xg <- test_data |> 
@@ -441,45 +442,11 @@ pred_class_xg |>
   scale_y_continuous("Perc predicted", labels = scales::label_percent()) +
   facet_wrap(~ prob, nrow = 1)
 
-### Tuning grid? -----------------------
-
-tune_class_xg <- boost_tree(trees = tune(), min_n = tune(), tree_depth = tune()) |>
-  set_engine("xgboost") |>
-  set_mode("classification")
-
-recipie_tune_class_xg <- workflow() |> 
-  add_model(tune_class_xg) |>
-  add_formula(uc_receipt ~ age +
-    i_c +
-    region + disab + educ + gender + emp_len + seeking +
-    house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-    children + employment + marsta)
-
-
-xg_tune_grid <- tune_class_xg |> 
-  extract_parameter_set_dials() |> 
-  grid_regular(levels = 2)
-
-# Test timing of one
-start <- Sys.time()
-recipie_tune_class_xg |> 
-  update_model(set_args(tune_class_xg, trees = 10, min_n = 2, tree_depth = 2)) |> 
-  fit_resamples(cv_train_set)
-Sys.time() - start   # super-simple model takes 43s on mine
-
-tune_out_class_xg <-
-  tune_grid(
-    recipie_tune_class_xg,
-    resamples = cv_train_set,
-    grid = xg_tune_grid,
-    control = control_grid(parallel_over = "everything")
-  )
-
 
 ### with MC resampling CV ---------------------------------------------
 
 
-cv_class_xg <- fit_resamples(recipie_class_xg, mc_train_set, control = control_resamples(save_pred = TRUE))
+cv_class_xg <- fit_resamples(recipe_class_xg, mc_train_set, control = control_resamples(save_pred = TRUE))
 
 collect_metrics(cv_class_xg)
 
@@ -509,20 +476,24 @@ mod_class_log <- logistic_reg() |>
   set_engine("glm") |> 
   set_mode("classification")
 
-recipie_class_log <- workflow() |>
+recipe_class_log <- workflow() |>
   add_model(mod_class_log) |>
   add_formula(
-    uc_receipt ~ poly(age, 2) +
-      i_c +
-      # poly(i_l, 4) + i_0 + i_m +
-      region + disab + educ + gender + emp_len + seeking + student + student:employment + student:seeking + student:caring +
-      house_ten + house_resp + n_hh_emp + n_hh_unemp + n_hh_inact +
-      children * employment * marsta * caring
+    uc_receipt ~ poly(age, 2) + i_c +
+      # # poly(i_l, 4) + i_0 + i_m +
+      region + disab + educ + emp_len + 
+      house_ten + house_resp + seeking + student +
+      n_hh_emp * n_hh_unemp * n_hh_inact + 
+      caring * employment + gender:children + gender:children:employment +
+      children:employment + student:children + student:caring + marsta:employment +
+      n_hh_emp:children + n_hh_unemp:children + n_hh_inact:children +
+      n_hh_emp:caring + n_hh_unemp:caring + n_hh_inact:caring +
+      gender*marsta*children
   )
 
 fit_class_log <- 
   fit(
-    recipie_class_log,
+    recipe_class_log,
     data = train_data
   )
 
@@ -535,6 +506,9 @@ pred_class_log |>
   (\(x) {print(roc_auc(x, uc_receipt, .pred_1)); x})() |> 
   roc_curve(uc_receipt, .pred_1) |> 
   autoplot()
+
+tidy(fit_class_log) |> 
+  filter(is.na(estimate))
 
 pred_class_log |> 
   (\(x) {print(conf_mat(x, uc_receipt, .pred_class)); x})() |> 
@@ -552,7 +526,90 @@ pred_class_log |>
   scale_y_continuous("Perc predicted", labels = scales::label_percent()) +
   facet_wrap(~ prob, nrow = 1)
 
-### with Monte Carlo resampling for cross-validation ----------------------
+## mixed effects classification ----------------------------------
+
+library(multilevelmod)
+
+mod_class_me <- logistic_reg() |> 
+  set_engine("glmer") |> 
+  set_mode("classification")
+
+recipe_class_me <-   workflow() |>
+  add_variables(
+    outcomes = uc_receipt,
+    predictors = c(
+      age, i_c, disab, educ, gender, emp_len,
+      seeking, student, house_ten, house_resp, n_hh_emp,
+      n_hh_unemp, n_hh_inact, children, employment, marsta, caring,
+      region
+    )
+  ) |>
+  step_poly(age, 2) |>
+  step_dummy(all_nominal_predictors() - region) |>
+  step_interact(
+    ~ starts_with("children_"):starts_with("employment_"):starts_with("marsta_"):starts_with("caring_") +
+      starts_with("employment"):student
+  ) |>
+  add_model(
+    mod_class_me,
+    formula = uc_receipt ~ age + i_c +
+      disab + educ + gender + emp_len + seeking + student +
+      house_ten + house_resp + n_hh_emp + n_hh_unemp + n_hh_inact +
+      children + employment + marsta + caring + (1 | region)
+  )
+
+
+recipe_class_me <- recipe(uc_receipt ~ age + i_c +
+          disab + educ + gender + emp_len + seeking + student +
+          house_ten + house_resp + n_hh_emp + n_hh_unemp + n_hh_inact +
+          children + employment + marsta + caring + region,
+       data = train_data) |> 
+  add_role(region, new_role = "exp_unit") |>
+  step_interact(
+    ~ starts_with("children_"):starts_with("employment_"):starts_with("marsta_"):starts_with("caring_") +
+      starts_with("employment"):student
+  ) |>
+  step_poly(age, 2) |>
+  step_dummy(all_nominal_predictors() - region)
+
+
+
+# workflow() |>
+#   add_model(mod_class_me) |> 
+#   add_recipe(recipe_class_me) |> 
+#   fit(train_data)
+
+fit_class_me <-
+  fit(recipe_class_me,
+      data = train_data)
+
+
+pred_class_me <- test_data |> 
+  bind_cols(predict(fit_class_me, new_data = test_data, type = "prob")) |> 
+  mutate(.pred_class = factor(as.numeric(.pred_1 > 0.5), levels = c("1", "0")))
+
+pred_class_me |> 
+  (\(x) {print(roc_auc(x, uc_receipt, .pred_1)); x})() |> 
+  roc_curve(uc_receipt, .pred_1) |> 
+  autoplot()
+
+pred_class_me |> 
+  (\(x) {print(conf_mat(x, uc_receipt, .pred_class)); x})() |> 
+  ggplot(aes(uc_receipt, fill = .pred_class)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::label_percent())
+
+pred_class_me |> 
+  select(.pred_1, uc_receipt) |> 
+  crossing(prob = c(0.1, 0.25, 0.5, 0.75, 0.9)) |> 
+  mutate(.pred_class = factor(.pred_1 > prob, labels = c("No UC", "UC")),
+         uc_receipt = factor(uc_receipt, levels = c("1", "0"), labels = c("UC", "No UC"))) |> 
+  ggplot(aes(uc_receipt, fill = .pred_class)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous("Perc predicted", labels = scales::label_percent()) +
+  facet_wrap(~ prob, nrow = 1)
+
+## with Monte Carlo resampling for cross-validation ----------------------
 
 library(doParallel)
 
@@ -561,7 +618,7 @@ cl <- parallel::makePSOCKcluster(floor(0.98*cores))
 
 registerDoParallel(cl)
 
-cv_class_log <- recipie_class_log |> fit_resamples(mc_train_set, control = control_resamples(save_pred = TRUE))
+cv_class_log <- recipe_class_log |> fit_resamples(mc_train_set, control = control_resamples(save_pred = TRUE))
 
 collect_metrics(cv_class_log)
 
@@ -584,5 +641,7 @@ collect_predictions(cv_class_log) |>
   summarise(Pred_receive = sum(.pred_class == "UC")/n()) |> 
   ggplot(aes(prob, Pred_receive, colour = uc_receipt)) +
   geom_line()  
+
+
 
 stopCluster(cl)
