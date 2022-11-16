@@ -321,77 +321,6 @@ test_data <- testing(data_split)
 mc_train_set <- mc_cv(train_data)
 cv_train_set <- vfold_cv(train_data, v = 10)
 
-# linear regression - UC payment amount -----------------------------------
-
-mod_lin_lm <- linear_reg() |>
-  fit(
-    uc_income ~ poly(age, 2) + 
-      i_c +
-      # poly(i_l, 4) + i_0 + i_m +
-      region + disab + educ + gender + emp_len + seeking +
-      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-      children * employment * marsta,
-      # employment * children * seeking * marsta,
-      # employment * children * seeking * marsta,
-      # employment * children * seeking * marsta,
-    data = train_data
-  )
-
-mod_lin_lm |>
-  extract_fit_engine() |>
-  summary()
-
-test_data |> 
-  bind_cols(predict(mod_lin_lm, new_data = test_data)) |> 
-  mutate(.pred = if_else(.pred < 0, 0, .pred)) |> 
-  (\(x) {print(rmse(x, uc_income, .pred)); x})() |> 
-  ggplot(aes(uc_income, .pred)) +
-  geom_point() +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed")
-
-
-mod_lin_xg <- boost_tree(min_n = 3) |> 
-  set_mode("regression") |> 
-  fit(
-    uc_income ~ poly(age, 2) + 
-      i_c +
-      # poly(i_l, 4) + i_0 + i_m +
-      region + disab + educ + gender + emp_len + seeking +
-      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-      children + employment + marsta,
-    data = train_data
-  )
-
-test_data |> 
-  bind_cols(predict(mod_lin_xg, new_data = test_data)) |> 
-  mutate(.pred = if_else(.pred < 0, 0, .pred)) |> 
-  (\(x) {print(rmse(x, uc_income, .pred)); x})() |> 
-  ggplot(aes(uc_income, .pred)) +
-  geom_point() +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed")
-
-
-mod_lin_forest <- rand_forest(trees = 1000) |> 
-  set_engine("ranger") |> 
-  set_mode("regression") |> 
-  fit(
-    uc_income ~ age + 
-      i_c +
-      region + disab + educ + gender + emp_len + seeking +
-      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-      children + employment + marsta,
-    data = train_data
-  )
-  
-test_data |> 
-  bind_cols(predict(mod_lin_forest, new_data = test_data)) |> 
-  mutate(.pred = if_else(.pred < 0, 0, .pred)) |> 
-  (\(x) {print(rmse(x, uc_income, .pred)); x})() |> 
-  ggplot(aes(uc_income, .pred)) +
-  geom_point() +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed")
-
-
 # probability of UC receipt -----------------------------------------------
 
 
@@ -526,6 +455,11 @@ pred_class_log |>
   scale_y_continuous("Perc predicted", labels = scales::label_percent()) +
   facet_wrap(~ prob, nrow = 1)
 
+
+## practice exports ----------------------------------------------
+
+library(butcher)
+
 ## mixed effects classification ----------------------------------
 
 library(multilevelmod)
@@ -645,3 +579,74 @@ collect_predictions(cv_class_log) |>
 
 
 stopCluster(cl)
+
+# linear regression - UC payment amount -----------------------------------
+
+mod_lin_lm <- linear_reg() |>
+  fit(
+    uc_income ~ poly(age, 2) + 
+      i_c +
+      # poly(i_l, 4) + i_0 + i_m +
+      region + disab + educ + gender + emp_len + seeking +
+      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
+      children * employment * marsta,
+      # employment * children * seeking * marsta,
+      # employment * children * seeking * marsta,
+      # employment * children * seeking * marsta,
+    data = train_data
+  )
+
+mod_lin_lm |>
+  extract_fit_engine() |>
+  summary()
+
+test_data |> 
+  bind_cols(predict(mod_lin_lm, new_data = test_data)) |> 
+  mutate(.pred = if_else(.pred < 0, 0, .pred)) |> 
+  (\(x) {print(rmse(x, uc_income, .pred)); x})() |> 
+  ggplot(aes(uc_income, .pred)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")
+
+
+mod_lin_xg <- boost_tree(min_n = 3) |> 
+  set_mode("regression") |> 
+  fit(
+    uc_income ~ poly(age, 2) + 
+      i_c +
+      # poly(i_l, 4) + i_0 + i_m +
+      region + disab + educ + gender + emp_len + seeking +
+      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
+      children + employment + marsta,
+    data = train_data
+  )
+
+test_data |> 
+  bind_cols(predict(mod_lin_xg, new_data = test_data)) |> 
+  mutate(.pred = if_else(.pred < 0, 0, .pred)) |> 
+  (\(x) {print(rmse(x, uc_income, .pred)); x})() |> 
+  ggplot(aes(uc_income, .pred)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")
+
+
+mod_lin_forest <- rand_forest(trees = 1000) |> 
+  set_engine("ranger") |> 
+  set_mode("regression") |> 
+  fit(
+    uc_income ~ age + 
+      i_c +
+      region + disab + educ + gender + emp_len + seeking +
+      house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
+      children + employment + marsta,
+    data = train_data
+  )
+  
+test_data |> 
+  bind_cols(predict(mod_lin_forest, new_data = test_data)) |> 
+  mutate(.pred = if_else(.pred < 0, 0, .pred)) |> 
+  (\(x) {print(rmse(x, uc_income, .pred)); x})() |> 
+  ggplot(aes(uc_income, .pred)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")
+
