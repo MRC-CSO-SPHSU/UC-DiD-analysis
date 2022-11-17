@@ -86,11 +86,12 @@ import_ukmod_data <- function() {
         les %in% 6:7 ~ "Inactive",
         les == 4 ~ "Retired",
         les == 8 ~ "Sick or disabled",
-        les == 10 ~ "Family worker",
-        TRUE ~ "Other"
-      ),
+        TRUE ~ "Other"),
       emp_len = case_when(
-        les %in% c(4:8) ~ "Not in employment",
+        les == 5 ~ "Unemployed",
+        les %in% 6:7 ~ "Inactive",
+        les == 4 ~ "Retired",
+        les == 8 ~ "Sick or disabled",
         liwwh < 12 ~ "Less than 12 months",
         liwwh < 24 ~ "Between 1 and 2 years",
         liwwh < 60 ~ "Between 2 and 5 years",
