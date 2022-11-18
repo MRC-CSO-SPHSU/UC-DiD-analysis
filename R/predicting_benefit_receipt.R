@@ -289,6 +289,16 @@ pred_class_me |>
   scale_y_continuous("Perc predicted", labels = scales::label_percent()) +
   facet_wrap(~ prob, nrow = 1)
 
+
+## knn ---------------------------------------------------------------------
+
+mod_class_knn <- nearest_neighbor(mode = "classification", neighbors = 10)
+
+recipe_class_knn <- recipe(uc_receipt ~ .,
+                           data = train_data) 
+
+fit_class_knn <- fit(mod_class_knn, recipe_class_knn, data = train_data)
+
 ## with Monte Carlo resampling for cross-validation ----------------------
 
 library(doParallel)
