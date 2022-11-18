@@ -73,6 +73,7 @@ import_ukmod_data <- function() {
   ukmod_tidy <- full_pred_data |>
     mutate(
       age = dag,
+      age_2 = age ^ 2,
       cit = if_else(dcz == 1, "UK", "Other"),
       # leave out as odd in UKMOD?
       disab = factor(
@@ -196,6 +197,7 @@ import_aps_data <- function(aps_data) {
   aps_tidy <- aps_data |>
     mutate(
       age = AGE,
+      age_2 = age ^ 2,
       cit = if_else(NTNLTY12 == 926, "UK", "Other"),
       # leave out as odd in UKMOD?
       disab = fct_collapse(
@@ -206,11 +208,12 @@ import_aps_data <- function(aps_data) {
       employment = case_when(
         INECAC05 %in% 1:4 ~ "Employed",
         INECAC05 == 5 ~ "Unemployed",
+        INECAC05 %in% 12:33 ~ "Inactive",
         INECAC05 %in% c(20, 31) ~ "Retired",
         INECAC05 %in% c(15:16, 26:27) ~ "Sick or disabled",
-        INECAC05 %in% 12:33 ~ "Inactive",
         TRUE ~ "Other"
       ),
+      student = if_else(STUCUR == 1, 1L, 0L),
       educ = case_when(
         if_any(matches("QUAL_[1-9]$"), ~ .x == 1) ~ "Degree or College",
         if_any(matches("QUAL_1[0-7]$"), ~ .x == 1) |
@@ -229,7 +232,10 @@ import_aps_data <- function(aps_data) {
         TRUE ~ "Single"
       ),
       emp_len = case_when(
-        INECAC05 > 4 ~ "Not in employment",
+        INECAC05 == 5 ~ "Unemployed",
+        INECAC05 %in% 12:33 ~ "Inactive",
+        INECAC05 %in% c(20, 31) ~ "Retired",
+        INECAC05 %in% c(15:16, 26:27) ~ "Sick or disabled",
         EMPMON < 12 ~ "Less than 12 months",
         EMPMON < 24 ~ "Between 1 and 2 years",
         EMPMON < 60 ~ "Between 2 and 5 years",
@@ -295,4 +301,21 @@ import_aps_data <- function(aps_data) {
       # idhh, year
       # children, region, caring
     )
+  
+  aps_tidy
+}
+
+process_aps_data <- function(aps_data) {
+  recipe_class_log <- recipe(
+    uc_receipt ~ .,
+    data = aps_data
+  ) |> 
+    step_interact(
+      # ~ starts_with('gender_'):starts_with('children_') + starts_with('gender_'):starts_with('children_'):starts_with('emp_len_') + starts_with('children_'):starts_with('emp_len_') + student:starts_with('children_') + student:starts_with('caring_') + starts_with('n_hh_emp_'):starts_with('children_') + starts_with('n_hh_unemp_'):starts_with('children_') + starts_with('n_hh_inact_'):starts_with('children_') + starts_with('n_hh_emp_'):starts_with('caring_') + starts_with('n_hh_unemp_'):starts_with('caring_') + starts_with('n_hh_inact_'):starts_with('caring_') + starts_with('marsta_')*starts_with('gender_')*starts_with('children_')
+      ~ starts_with('gender_'):starts_with('children_') + starts_with('gender_'):starts_with('children_'):starts_with('emp_len_') + starts_with('children_'):starts_with('emp_len_') + student:starts_with('children_') + student:starts_with('caring_') + starts_with('marsta_')*starts_with('gender_')*starts_with('children_')
+    )
+  
+  recipe_class_log |> 
+    prep() |> 
+    bake(aps_data) 
 }

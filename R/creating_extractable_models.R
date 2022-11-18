@@ -25,11 +25,12 @@ model_data <- tidy_stage1 |>
     # p_hh_emp = if_else(employment == "Employed" & n_hh_emp > 0, 1, 0),
     n_hh_emp = fct_other(factor(n_hh_emp), c("0", "1"), other_level = "2+"),
     n_hh_unemp = fct_other(factor(n_hh_unemp), c("0", "1"), other_level = "2+"),
-    n_hh_inact = fct_other(factor(n_hh_inact), c("0", "1"), other_level = "2+"),
-    age_2 = age ^ 2) |> 
+    n_hh_inact = fct_other(factor(n_hh_inact), c("0", "1"), other_level = "2+")
+    ) |> 
   dummy_cols(remove_first_dummy = TRUE, remove_selected_columns = TRUE) |> 
   janitor::clean_names() |> 
-  mutate(uc_receipt = factor(uc_receipt, levels = 1:0, labels = c("Yes", "No")))
+  mutate(uc_receipt = factor(uc_receipt, levels = 1:0, labels = c("Yes", "No"))) |> 
+  select(-starts_with("n_hh"))
   
 
 # predict data from UKMOD -------------------------------------------------
@@ -54,7 +55,8 @@ recipe_class_log <- recipe(
   data = train_data
 ) |> 
   step_interact(
-    ~ starts_with('gender_'):starts_with('children_') + starts_with('gender_'):starts_with('children_'):starts_with('emp_len_') + starts_with('children_'):starts_with('emp_len_') + student:starts_with('children_') + student:starts_with('caring_') + starts_with('marsta_'):starts_with('emp_len_') + starts_with('n_hh_emp_'):starts_with('children_') + starts_with('n_hh_unemp_'):starts_with('children_') + starts_with('n_hh_inact_'):starts_with('children_') + starts_with('n_hh_emp_'):starts_with('caring_') + starts_with('n_hh_unemp_'):starts_with('caring_') + starts_with('n_hh_inact_'):starts_with('caring_') + starts_with('marsta_')*starts_with('gender_')*starts_with('children_')
+    # ~ starts_with('gender_'):starts_with('children_') + starts_with('gender_'):starts_with('children_'):starts_with('emp_len_') + starts_with('children_'):starts_with('emp_len_') + student:starts_with('children_') + student:starts_with('caring_') + starts_with('n_hh_emp_'):starts_with('children_') + starts_with('n_hh_unemp_'):starts_with('children_') + starts_with('n_hh_inact_'):starts_with('children_') + starts_with('n_hh_emp_'):starts_with('caring_') + starts_with('n_hh_unemp_'):starts_with('caring_') + starts_with('n_hh_inact_'):starts_with('caring_') + starts_with('marsta_')*starts_with('gender_')*starts_with('children_')
+    ~ starts_with('gender_'):starts_with('children_') + starts_with('gender_'):starts_with('children_'):starts_with('emp_len_') + starts_with('children_'):starts_with('emp_len_') + student:starts_with('children_') + student:starts_with('caring_') + starts_with('marsta_')*starts_with('gender_')*starts_with('children_')
   )
 
 
@@ -85,7 +87,8 @@ intercept <- tidy(fit_class_log) |>  head(1) |> pull(estimate)
 library(tidypredict)
 library(yaml)
 
-fit_class_log |> extract_fit_engine() |> parse_model() |> write_yaml("output/log_pred.yml")
+# fit_class_log |> extract_fit_engine() |> parse_model() |> write_yaml("output/log_pred.yml")
+fit_class_log |> extract_fit_engine() |> parse_model() |> write_yaml("output/log_pred_no_hh.yml")
 
 loaded_model <- as_parsed_model(read_yaml("output/log_pred.yml"))
 
@@ -125,7 +128,8 @@ pred_class_log |>
   geom_bar(position = "fill")
 
 fit_class_log |> tidy() |> 
-  write_csv(file = "output/log_pred_coefs.csv")
+  # write_csv(file = "output/log_pred_coefs.csv")
+  write_csv(file = "output/log_pred_coefs_no_hh.csv")
   
 # xg_boost out ------------------------------------------------------------
 
@@ -153,4 +157,5 @@ pred_class_xg |>
   roc_curve(uc_receipt, .pred_Yes) |> 
   autoplot()  
 
-fit_class_xg |> extract_fit_engine() |> parse_model() |> write_yaml("output/test2.yml")
+# fit_class_xg |> extract_fit_engine() |> parse_model() |> write_yaml("output/boost_tree.yml")
+fit_class_xg |> extract_fit_engine() |> parse_model() |> write_yaml("output/boost_tree_no_hh.yml")
