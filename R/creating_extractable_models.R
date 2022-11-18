@@ -4,7 +4,6 @@ source("R/prediction_data_import.R")
 
 ukmod_tidy <- import_ukmod_data()
 
-
 # pre-processing manually -------------------------------------------------
 
 tidy_stage1 <- ukmod_tidy |> 
@@ -27,10 +26,10 @@ model_data <- tidy_stage1 |>
     n_hh_unemp = fct_other(factor(n_hh_unemp), c("0", "1"), other_level = "2+"),
     n_hh_inact = fct_other(factor(n_hh_inact), c("0", "1"), other_level = "2+")
     ) |> 
-  dummy_cols(remove_first_dummy = TRUE, remove_selected_columns = TRUE) |> 
+  fastDummies::dummy_cols(remove_first_dummy = TRUE, remove_selected_columns = TRUE) |> 
   janitor::clean_names() |> 
-  mutate(uc_receipt = factor(uc_receipt, levels = 1:0, labels = c("Yes", "No"))) |> 
-  select(-starts_with("n_hh"))
+  # select(-starts_with("n_hh")) |>
+  mutate(uc_receipt = factor(uc_receipt, levels = 1:0, labels = c("Yes", "No")))
   
 
 # predict data from UKMOD -------------------------------------------------

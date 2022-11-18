@@ -114,7 +114,7 @@ import_ukmod_data <- function() {
         labels = c("Female", "Male")
       ),
       marsta = factor(
-        if_else(dms == 0, 1, dms),
+        if_else(dms == 0, 1L, dms),
         levels = 1:5,
         labels = c("Single", "Married", "Separated", "Divorced", "Widowed")
       ),
