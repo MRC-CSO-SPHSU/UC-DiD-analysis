@@ -87,8 +87,13 @@ tune_out_class_forest <-
     recipe_tune_class_forest,
     grid = forest_tune_grid,
     resamples = cv_train_set,
-    metrics = metric_set(roc_auc, )
+    metrics = metric_set(sens, spec, ppv, npv, roc_auc),
+    control = control_grid(parallel_over = "everything",
+                           verbose = TRUE)
   )
+
+
+saveRDS(tune_out_class_xg, "output/tune_out_class_forest.rds")
 
 # ## xgboost ---------------------------------------------------------------
 # 
@@ -129,4 +134,4 @@ tune_out_class_forest <-
 # 
 # saveRDS(tune_out_class_xg, "output/tune_out_class_xg_up.rds")
 # 
-# stopCluster(cl)
+stopCluster(cl)
