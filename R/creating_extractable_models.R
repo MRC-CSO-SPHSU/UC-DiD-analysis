@@ -1,8 +1,10 @@
 # importing and preparing dataset ----------------------------------------------
-
+plan(multisession, workers = 4)
 source("R/prediction_data_import.R")
 
 ukmod_tidy <- import_ukmod_data()
+
+plan(sequential)
 
 # pre-processing manually -------------------------------------------------
 
