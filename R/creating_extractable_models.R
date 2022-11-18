@@ -1,4 +1,5 @@
 # importing and preparing dataset ----------------------------------------------
+library(future)
 plan(multisession, workers = 4)
 source("R/prediction_data_import.R")
 
