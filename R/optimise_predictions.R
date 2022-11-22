@@ -54,7 +54,7 @@ cv_train_set <- vfold_cv(train_data, v = 10)
 library(doParallel)
 
 cores <- parallel::detectCores()
-cl <- parallel::makePSOCKcluster(floor(0.98*cores))
+cl <- parallel::makePSOCKcluster(floor(0.95*cores))
 
 registerDoParallel(cl)
 
