@@ -20,8 +20,13 @@ cv_class_xg <- fit_resamples(recipe_class_xg, mc_train_set, control = control_re
 stopCluster(cl)
 
 
-cv_class_log %>% 
+cv_class_log |>  
   collect_metrics()
 
-cv_class_xg %>% 
+cv_class_xg |> 
   collect_metrics()
+
+stopCluster(cl)
+
+
+cv_class_log
