@@ -61,77 +61,77 @@ registerDoParallel(cl)
 
 
 # random forest -----------------------------------------------------------
-
-tune_class_forest <-
-  rand_forest(
-    engine = "ranger",
-    mode = "classification",
-    trees = tune(),
-    min_n = tune()
-  )
-
-recipe_tune_class_forest <- workflow() |>
-  add_model(tune_class_forest) |>
-  add_formula(
-    uc_receipt ~ .
-  )
-
-
-
-forest_tune_grid <- tune_class_forest |> 
-  extract_parameter_set_dials() |> 
-  grid_regular(levels = 4)
-
-tune_out_class_forest <- 
-  tune_grid(
-    recipe_tune_class_forest,
-    grid = forest_tune_grid,
-    resamples = cv_train_set,
-    metrics = metric_set(sens, spec, ppv, npv, roc_auc),
-    control = control_grid(parallel_over = "everything",
-                           verbose = TRUE)
-  )
-
-
-saveRDS(tune_out_class_xg, "output/tune_out_class_forest.rds")
+# Not working - huuuuuuuge RAM increases!
+# tune_class_forest <-
+#   rand_forest(
+#     engine = "ranger",
+#     mode = "classification",
+#     trees = tune(),
+#     min_n = tune()
+#   )
+# 
+# recipe_tune_class_forest <- workflow() |>
+#   add_model(tune_class_forest) |>
+#   add_formula(
+#     uc_receipt ~ .
+#   )
+# 
+# 
+# 
+# forest_tune_grid <- tune_class_forest |> 
+#   extract_parameter_set_dials() |> 
+#   grid_regular(levels = 4)
+# 
+# tune_out_class_forest <- 
+#   tune_grid(
+#     recipe_tune_class_forest,
+#     grid = forest_tune_grid,
+#     resamples = cv_train_set,
+#     metrics = metric_set(sens, spec, ppv, npv, roc_auc),
+#     control = control_grid(parallel_over = "everything",
+#                            verbose = TRUE)
+#   )
+# 
+# 
+# saveRDS(tune_out_class_forest, "output/tune_out_class_forest.rds")
 
 # ## xgboost ---------------------------------------------------------------
 # 
 # 
 # 
-# tune_class_xg <- boost_tree(trees = 1000, tree_depth = tune(), min_n = tune(), learn_rate = tune(), loss_reduction = tune()) |>
-#   set_engine("xgboost") |>
-#   set_mode("classification")
-# 
-# recipie_tune_class_xg <- workflow() |>
-#   add_model(tune_class_xg) |>
-#   add_formula(uc_receipt ~ age +
-#                 i_c +
-#                 region + disab + educ + gender + emp_len + seeking + student +
-#                 house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-#                 children + employment + marsta)
-# 
-# xg_tune_grid <- tune_class_xg |>
-#   extract_parameter_set_dials() |>
-#   grid_regular(levels = 3)
-# 
-# xg_tune_grid$min_n <- rep(c(40, 50, 60), 27)
-# xg_tune_grid$tree_depth <- rep(rep(c(5, 10, 15), each = 3), 9)
-# 
-# 
-# start <- Sys.time()
-# tune_out_class_xg <-
-#   tune_grid(
-#     recipie_tune_class_xg,
-#     grid = xg_tune_grid,
-#     resamples = mc_train_set,
-#     metrics = metric_set(roc_auc),
-#     control = control_grid(parallel_over = "everything",
-#                            verbose = TRUE)
-#   )
-# Sys.time() - start
-# 
-# 
-# saveRDS(tune_out_class_xg, "output/tune_out_class_xg_up.rds")
-# 
+tune_class_xg <- boost_tree(trees = 1000, tree_depth = tune(), min_n = tune(), learn_rate = tune(), loss_reduction = tune()) |>
+  set_engine("xgboost") |>
+  set_mode("classification")
+
+recipie_tune_class_xg <- workflow() |>
+  add_model(tune_class_xg) |>
+  add_formula(uc_receipt ~ age +
+                i_c +
+                region + disab + educ + gender + emp_len + seeking + student +
+                house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
+                children + employment + marsta)
+
+xg_tune_grid <- tune_class_xg |>
+  extract_parameter_set_dials() |>
+  grid_regular(levels = 3)
+
+xg_tune_grid$min_n <- rep(c(40, 45, 50), 27)
+xg_tune_grid$tree_depth <- rep(rep(c(10, 15, 20), each = 3), 9)
+
+
+start <- Sys.time()
+tune_out_class_xg <-
+  tune_grid(
+    recipie_tune_class_xg,
+    grid = xg_tune_grid,
+    resamples = mc_train_set,
+    metrics = metric_set(roc_auc),
+    control = control_grid(parallel_over = "everything",
+                           verbose = TRUE)
+  )
+Sys.time() - start
+
+
+saveRDS(tune_out_class_xg, "output/tune_out_class_xg_up.rds")
+
 stopCluster(cl)
