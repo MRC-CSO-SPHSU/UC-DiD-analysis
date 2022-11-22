@@ -105,11 +105,7 @@ tune_class_xg <- boost_tree(trees = 1000, tree_depth = tune(), min_n = tune(), l
 
 recipie_tune_class_xg <- workflow() |>
   add_model(tune_class_xg) |>
-  add_formula(uc_receipt ~ age +
-                i_c +
-                region + disab + educ + gender + emp_len + seeking + student +
-                house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
-                children + employment + marsta)
+  add_formula(uc_receipt ~ .)
 
 xg_tune_grid <- tune_class_xg |>
   extract_parameter_set_dials() |>
