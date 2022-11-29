@@ -60,14 +60,14 @@ fit_class_xg <- recipe_class_xg |>
 pred_class_xg <- test_data |> 
   bind_cols(predict(fit_class_xg, new_data = test_data, type = "prob")) |> 
   mutate(.pred_class = factor(as.numeric(.pred_1 > 0.5), levels = c("1", "0")))
-  # mutate(predict(fit_class_xg, new_data = test_data))
+# mutate(predict(fit_class_xg, new_data = test_data))
 
 pred_class_xg |> 
   (\(x) {print(roc_auc(x, uc_receipt, .pred_1)); x})() |> 
   roc_curve(uc_receipt, .pred_1) |> 
   autoplot()
 
-  
+
 pred_class_xg |> 
   (\(x) {print(conf_mat(x, uc_receipt, .pred_class)); x})() |> 
   ggplot(aes(uc_receipt, fill = .pred_class)) +
@@ -120,34 +120,34 @@ mod_class_log <- logistic_reg() |>
 
 
 recipe_class_log <- recipe(
-    uc_receipt ~ age + i_c +
-      region + disab + educ + emp_len + 
-      house_ten + house_resp + seeking + student +
-      n_hh_emp  +  n_hh_unemp  +  n_hh_inact + 
-      caring  +  employment +  gender + marsta + children,
+  uc_receipt ~ age + i_c +
+    region + disab + educ + emp_len + 
+    house_ten + house_resp + seeking + student +
+    n_hh_emp  +  n_hh_unemp  +  n_hh_inact + 
+    caring  +  employment +  gender + marsta + children,
   data = train_data
 ) |> 
   step_dummy(all_nominal_predictors()) |> 
   step_interact(
-      ~ starts_with('gender_'):starts_with('children_') + starts_with('gender_'):starts_with('children_'):starts_with('employment_') + starts_with('children_'):starts_with('employment_') + student:starts_with('children_') + student:starts_with('caring_') + starts_with('marsta_'):starts_with('employment_') + starts_with('n_hh_emp_'):starts_with('children_') + starts_with('n_hh_unemp_'):starts_with('children_') + starts_with('n_hh_inact_'):starts_with('children_') + starts_with('n_hh_emp_'):starts_with('caring_') + starts_with('n_hh_unemp_'):starts_with('caring_') + starts_with('n_hh_inact_'):starts_with('caring_') + starts_with('marsta_')*starts_with('gender_')*starts_with('children_')
+    ~ starts_with('gender_'):starts_with('children_') + starts_with('gender_'):starts_with('children_'):starts_with('employment_') + starts_with('children_'):starts_with('employment_') + student:starts_with('children_') + student:starts_with('caring_') + starts_with('marsta_'):starts_with('employment_') + starts_with('n_hh_emp_'):starts_with('children_') + starts_with('n_hh_unemp_'):starts_with('children_') + starts_with('n_hh_inact_'):starts_with('children_') + starts_with('n_hh_emp_'):starts_with('caring_') + starts_with('n_hh_unemp_'):starts_with('caring_') + starts_with('n_hh_inact_'):starts_with('caring_') + starts_with('marsta_')*starts_with('gender_')*starts_with('children_')
   )
 
 
 wf_class_log <- workflow() |>
   add_model(mod_class_log) |>
   add_recipe(recipe_class_log)
-  # add_formula(
-  #   uc_receipt ~ poly(age, 2) + i_c +
-  #     # # poly(i_l, 4) + i_0 + i_m +
-  #     region + disab + educ + emp_len + 
-  #     house_ten + house_resp + seeking + student +
-  #     n_hh_emp * n_hh_unemp * n_hh_inact + 
-  #     caring * employment + gender:children + gender:children:employment +
-  #     children:employment + student:children + student:caring + marsta:employment +
-  #     n_hh_emp:children + n_hh_unemp:children + n_hh_inact:children +
-  #     n_hh_emp:caring + n_hh_unemp:caring + n_hh_inact:caring +
-  #     gender*marsta*children
-  # )
+# add_formula(
+#   uc_receipt ~ poly(age, 2) + i_c +
+#     # # poly(i_l, 4) + i_0 + i_m +
+#     region + disab + educ + emp_len + 
+#     house_ten + house_resp + seeking + student +
+#     n_hh_emp * n_hh_unemp * n_hh_inact + 
+#     caring * employment + gender:children + gender:children:employment +
+#     children:employment + student:children + student:caring + marsta:employment +
+#     n_hh_emp:children + n_hh_unemp:children + n_hh_inact:children +
+#     n_hh_emp:caring + n_hh_unemp:caring + n_hh_inact:caring +
+#     gender*marsta*children
+# )
 
 fit_class_log <- 
   fit(
@@ -240,10 +240,10 @@ recipe_class_me <-   workflow() |>
 
 
 recipe_class_me <- recipe(uc_receipt ~ age + i_c +
-          disab + educ + gender + emp_len + seeking + student +
-          house_ten + house_resp + n_hh_emp + n_hh_unemp + n_hh_inact +
-          children + employment + marsta + caring + region,
-       data = train_data) |> 
+                            disab + educ + gender + emp_len + seeking + student +
+                            house_ten + house_resp + n_hh_emp + n_hh_unemp + n_hh_inact +
+                            children + employment + marsta + caring + region,
+                          data = train_data) |> 
   add_role(region, new_role = "exp_unit") |>
   step_interact(
     ~ starts_with("children_"):starts_with("employment_"):starts_with("marsta_"):starts_with("caring_") +
@@ -346,9 +346,9 @@ mod_lin_lm <- linear_reg() |>
       region + disab + educ + gender + emp_len + seeking +
       house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
       children * employment * marsta,
-      # employment * children * seeking * marsta,
-      # employment * children * seeking * marsta,
-      # employment * children * seeking * marsta,
+    # employment * children * seeking * marsta,
+    # employment * children * seeking * marsta,
+    # employment * children * seeking * marsta,
     data = train_data
   )
 
@@ -397,7 +397,7 @@ mod_lin_forest <- rand_forest(trees = 1000) |>
       children + employment + marsta,
     data = train_data
   )
-  
+
 test_data |> 
   bind_cols(predict(mod_lin_forest, new_data = test_data)) |> 
   mutate(.pred = if_else(.pred < 0, 0, .pred)) |> 
