@@ -31,7 +31,7 @@ model_data <- tidy_stage1 |>
     ) |> 
   fastDummies::dummy_cols(remove_first_dummy = TRUE, remove_selected_columns = TRUE) |> 
   janitor::clean_names() |> 
-  # select(-starts_with("n_hh")) |>
+  select(-starts_with("n_hh")) |>
   mutate(uc_receipt = factor(uc_receipt, levels = 1:0, labels = c("Yes", "No")))
   
 
