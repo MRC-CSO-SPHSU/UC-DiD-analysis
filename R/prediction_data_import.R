@@ -276,8 +276,7 @@ import_aps_data <- function(aps_data) {
       house_resp = fct_other(as_factor(HRPID), "Yes", other_level = "No"),
       # Missing variable outside safe lab
       # children = fct_other(factor(FDPCH16), c("0", "1"), other_level = "2+"),
-      # region = str_extract(NUTS102, "(?<=^UK)\\w"),
-      # Totally missing variable?
+      # region = str_extract(NUTS132, "(?<=^UK)\\w"),
       # caring = factor(as.numeric(NOLWM == 3), labels = c("No", "Yes"))
     ) |>
     select(
