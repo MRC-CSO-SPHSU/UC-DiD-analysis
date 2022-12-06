@@ -1,0 +1,90 @@
+---
+title: "Model measurements"
+author: "Andy Baxter"
+format: pdf
+editor: visual
+---
+
+```{r}
+#| echo: false
+options(tidyverse.quiet = TRUE, tidymodels.quiet = TRUE)
+library(tidyverse)
+library(tidymodels)
+paste_perc <- function(num) paste0(sprintf("%.1f", round(num * 100, 1)), "%")
+```
+
+# Results from Monte-carlo simuation
+
+```{r}
+cv_class_log_no_hh <- readRDS("../output/cv_class_log_no_hh.rds")
+cv_class_xg_no_hh <- readRDS("../output/cv_class_xg_no_hh.rds")
+
+```
+
+# Metrics
+
+```{r}
+
+met_log <- collect_metrics(cv_class_log_no_hh)
+met_xg <- collect_metrics(cv_class_xg_no_hh)
+
+sens_log <- met_log$mean[met_log$.metric == "sens"]
+spec_log <- met_log$mean[met_log$.metric == "spec"]
+
+sens_xg <- met_xg$mean[met_xg$.metric == "sens"]
+spec_xg <- met_xg$mean[met_xg$.metric == "spec"]
+
+```
+
+The logistic regression model has a sensitivity of `r paste_perc(sens_log)` and a specificity of `r paste_perc(spec_log)`. Using this prediction model, `r paste_perc(1 - sens_log)` of UC-eligible participants will be absent from the analysis; `r paste_perc(1 - spec_log)` of non-UC-eligible participants will be included in the analysis.
+
+The boost tree model has a sensitivity of `r paste_perc(sens_xg)` and a specificity of `r paste_perc(spec_xg)`. Using this prediction model, `r paste_perc(1 - sens_xg)` of UC-eligible participants will be absent from the analysis; `r paste_perc(1 - spec_xg)` of non-UC-eligible participants will be included in the analysis.
+
+
+## Other cutoff points
+
+Decreasing threshold to 30% probability of receiving UC:
+
+```{r}
+cv_class_log_no_hh |>
+  select(-splits,-.metrics,-.notes) |>
+  mutate(spec = map(.predictions, function(df) {
+    df |>
+      transmute(pred_class = fct_rev(factor(if_else(
+        .pred_Yes > 0.3, "Yes", "No"
+      ))),
+      uc_receipt = uc_receipt) |>
+      (\(x) {
+      bind_rows(spec(x, uc_receipt, pred_class),
+                sens(x, uc_receipt, pred_class))
+        
+      })()
+    
+  })) |> 
+  unnest(spec) |> 
+  group_by(.metric) |> 
+  summarise(estimate = mean(.estimate))
+```
+
+
+```{r}
+cv_class_xg_no_hh |>
+  select(-splits,-.metrics,-.notes) |>
+  mutate(spec = map(.predictions, function(df) {
+    df |>
+      transmute(pred_class = fct_rev(factor(if_else(
+        .pred_Yes > 0.3, "Yes", "No"
+      ))),
+      uc_receipt = uc_receipt) |>
+      (\(x) {
+      bind_rows(spec(x, uc_receipt, pred_class),
+                sens(x, uc_receipt, pred_class))
+        
+      })()
+    
+  })) |> 
+  unnest(spec) |> 
+  group_by(.metric) |> 
+  summarise(estimate = mean(.estimate))
+```
+
