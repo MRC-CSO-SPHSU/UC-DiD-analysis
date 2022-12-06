@@ -29,6 +29,12 @@ full_dataset <-
              "anxious",
              "happy",
              "worth",
+             "grsswk",
+             "grsswk2",
+             "empmon",
+             # "nolwm",
+             "ioutcome",
+             "caind",
              # "ethuk11",
              # "fdpch19",
              # "oycirc",
@@ -48,8 +54,12 @@ full_dataset <-
 
 
 full_dataset |> 
-  reduce(bind_rows) |> 
-  summarise(across(.fns = ~sum(.x == -8)/n()))
+  reduce(bind_rows) |>
+  # count(ioutcome, satis) |> 
+  # pivot_wider(names_from = satis, values_from = n)
+  filter(ioutcome == 1, caind == 1) |> 
+  summarise(across(.fns = ~sum(.x == -8|.x == -9)/n()))
 
 
-
+full_dataset |> 
+  reduce(bind_rows) 
