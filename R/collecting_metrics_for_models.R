@@ -1,7 +1,7 @@
 library(doParallel)
 
 cores <- parallel::detectCores()
-cl <- parallel::makePSOCKcluster(floor(0.98*cores))
+cl <- parallel::makePSOCKcluster(50)
 
 registerDoParallel(cl)
 
@@ -26,5 +26,5 @@ cv_class_log |>
 cv_class_xg |> 
   collect_metrics()
 
-
-cv_class_log
+saveRDS(cv_class_log, "output/cv_class_log_no_hh.rds")
+saveRDS(cv_class_xg, "output/cv_class_xg_no_hh.rds")
