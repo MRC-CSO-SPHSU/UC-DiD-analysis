@@ -88,7 +88,7 @@ apr14_mar21_dt[,other := rowSums(.SD), .SD = tax_cr:jsa]
   select(date, other, weight) |> 
   summarise(prop_other = sum(other * weight)/sum(weight)) |> 
   ggplot(aes(date, prop_other)) +
-  geom_col(fill = sphsu_cols("Pumpkin"), width = 31) +
+  geom_col(fill = sphsu_cols("Pumpkin"), width = 32) +
   scale_x_date("Year") +
   scale_y_continuous("Respondents on\nLegacy Benefits", labels = scales::percent,
                      expand = expansion(mult = c(0, 0.05))))
@@ -99,7 +99,7 @@ apr14_mar21_dt[,other := rowSums(.SD), .SD = tax_cr:jsa]
   select(date, uc, weight) |> 
   summarise(prop_uc = sum(uc * weight)/sum(weight)) |> 
   ggplot(aes(date, prop_uc)) +
-  geom_col(fill = sphsu_cols("University Blue"), width = 31, position = "identity") +
+  geom_col(fill = sphsu_cols("University Blue"), width = 32, position = "identity") +
   scale_x_date("Year") +
   scale_y_continuous("Respondents on UC", labels = scales::percent,
                      expand = expansion(mult = c(0, 0.05))))
@@ -115,8 +115,12 @@ apr14_mar21_dt[,other := rowSums(.SD), .SD = tax_cr:jsa]
   ),
   benefits = factor(benefits, levels = c("Legacy Benefits", "Combination", "Universal Credit"))) |> 
   as_tibble() |> 
-  ggplot(aes(date, fill = benefits)) +
-  stat_sum(aes(y = weight), position = "fill", geom = "bar", width = 31) +
+    # group_by(date, benefits) |> 
+    # summarise(n = sum(weight)) |> 
+  ggplot(aes(date, weight, fill = benefits)) +
+  # geom_col(aes(y = weight), width = 32, position = "fill") +
+    stat_summary(fun = sum, position = "fill", geom = "bar", width = 32) +
+  # stat_sum(aes(y = weight), position = "fill", geom = "bar", width = 31) +
   # stat_count(position = "fill", geom = "bar", aes(y = after_stat(count)), width = 31, position = "identity") +
   scale_fill_manual(name = "Benefits claimed", values = sphsu_cols("Pumpkin", "Leaf", "University Blue", names = FALSE)) +
   scale_x_date("Year") +
