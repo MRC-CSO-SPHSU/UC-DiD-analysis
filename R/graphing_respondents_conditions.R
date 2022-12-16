@@ -159,3 +159,59 @@ ggsave(filename = "graphs/proporrions_benefit_type_weighted.png", width = 20, he
     theme(legend.position = "bottom") +
     scale_y_continuous("Claimant by benefit types",
                        expand = expansion(mult = c(0, 0.05))))
+
+
+
+# compare with proportion on UC as reported by statxplore -----------------
+
+
+pop_uc <- read_rds("data/pop_on_uc.rds")
+
+(perc_all <- apr14_mar21_dt |> 
+    as_tibble() |> 
+    group_by(date) |>
+    select(date, uc, weight) |> 
+    summarise(prop_uc = sum(uc * weight)/sum(weight)) |> 
+    ggplot(aes(date, prop_uc)) +
+    geom_col(fill = sphsu_cols("University Blue"), width = 32, position = "identity") +
+    scale_x_date("Year") +
+    scale_y_continuous("Respondents on UC", labels = scales::percent,
+                       expand = expansion(mult = c(0, 0.05))))
+
+(perc_statxplore <- pop_uc |> 
+  mutate(prop_uc = n_uc / pop) |> 
+    ggplot(aes(date, prop_uc)) +
+    geom_col(fill = sphsu_cols("University Blue"), width = 32, position = "identity") +
+    scale_x_date("Year") +
+    scale_y_continuous("Respondents on UC", labels = scales::percent,
+                       expand = expansion(mult = c(0, 0.05)))
+)
+
+perc_all / perc_statxplore
+
+pop_uc |> 
+  mutate(prop_uc_obs = n_uc / pop)
+
+comb_uc_rec <- apr14_mar21_dt |> 
+  as_tibble() |> 
+  group_by(date) |>
+  select(date, uc, weight) |> 
+  summarise(prop_uc_rep = sum(uc * weight)/sum(weight)) |> 
+  inner_join(pop_uc |> 
+               mutate(prop_uc_obs = n_uc / pop),
+             by = "date")
+
+comb_uc_rec |> 
+  ggplot(aes(date, prop_uc_rep)) +
+  geom_col(aes(linetype = "Reported"), fill = sphsu_cols("University Blue"), width = 32, position = "identity") +
+  geom_step(aes(y = prop_uc_obs, linetype = "Observed"), colour = sphsu_cols("University Blue"), linewidth = 0.5) +
+  scale_x_date("Year") +
+  guides(linetype = guide_legend(title = "Data source",
+                                 override.aes = list(fill = c(NA, sphsu_cols("University Blue")),
+                                                     linetype = c(1, 0)))) +
+  scale_y_continuous("Respondents on UC", labels = scales::percent,
+                     expand = expansion(mult = c(0, 0.05))) +
+  plot_annotation(title = "Proportions of working-age adults reporting receiving UC vs observed rates",
+                  subtitle = "April 2014 - March 2021")
+
+ggsave(filename = "graphs/comparison_uc_reporting.png", width = 20, height = 10, dpi = 400, units = "cm")
