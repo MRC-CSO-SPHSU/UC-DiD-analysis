@@ -52,6 +52,8 @@ model_data <- ukmod_tidy |>
   select(-starts_with("n_hh")) |>
   mutate(uc_receipt = factor(uc_receipt, levels = 1:0, labels = c("Yes", "No")))
 
+set.seed(123)
+
 data_split <- initial_split(model_data, prop = 0.8, strata = year)
 
 train_data <- training(data_split) |> select(-year)
