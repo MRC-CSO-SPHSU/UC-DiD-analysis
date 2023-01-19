@@ -13,31 +13,31 @@ import_ukmod_data <- function() {
     mutate(data = future_map(file, fread))
   
   
-  input_parts |>
-    select(-file) |>
-    separate(year_policy,
-             into = c("year", "policy"),
-             sep = "_") |>
-    mutate(
-      data = map(data, summarise, across(starts_with("b") &
-                                           ends_with("_s"), sum)),
-      data = map(
-        data,
-        pivot_longer,
-        everything(),
-        names_to = "benefit",
-        values_to = "val"
-      )
-    ) |>
-    unnest(data) |>
-    group_by(benefit, policy) |>
-    summarise(val = sum(val), .groups = "drop_last") |>
-    mutate(diff_val = diff(val)) |>
-    filter(abs(diff_val) > 1000) |>
-    arrange(abs(diff_val)) |>
-    ggplot(aes(val, fct_inorder(benefit))) +
-    geom_bar(stat = "identity") +
-    facet_wrap(~ policy)
+  # input_parts |>
+  #   select(-file) |>
+  #   separate(year_policy,
+  #            into = c("year", "policy"),
+  #            sep = "_") |>
+  #   mutate(
+  #     data = map(data, summarise, across(starts_with("b") &
+  #                                          ends_with("_s"), sum)),
+  #     data = map(
+  #       data,
+  #       pivot_longer,
+  #       everything(),
+  #       names_to = "benefit",
+  #       values_to = "val"
+  #     )
+  #   ) |>
+  #   unnest(data) |>
+  #   group_by(benefit, policy) |>
+  #   summarise(val = sum(val), .groups = "drop_last") |>
+  #   mutate(diff_val = diff(val)) |>
+  #   filter(abs(diff_val) > 1000) |>
+  #   arrange(abs(diff_val)) |>
+  #   ggplot(aes(val, fct_inorder(benefit))) +
+  #   geom_bar(stat = "identity") +
+  #   facet_wrap(~ policy)
   
   full_pred_data <- input_parts |>
     select(-file) |>
@@ -129,6 +129,7 @@ import_ukmod_data <- function() {
       i_0 = as.numeric(income == 0),
       i_m = as.numeric(income == 3415),
       i_l = income * (1 - i_m),
+      hours_worked_wk = lhw,
       # i.e. if income is max then turn off the continuous
       i_c = cut(
         income,
@@ -180,6 +181,7 @@ import_ukmod_data <- function() {
       i_m,
       i_l,
       i_c,
+      hours_worked_wk,
       house_ten,
       house_resp,
       caring
@@ -265,6 +267,7 @@ import_aps_data <- function(aps_data) {
                    "2000-2999",
                    "3000+")
       ),
+      hours_worked_wk = if_else(lhw %in% -9:-8, 0, lhw),
       house_ten = fct_collapse(
         factor(TEN1),
         Mortgaged = "2",
@@ -295,6 +298,7 @@ import_aps_data <- function(aps_data) {
       i_m,
       i_l,
       i_c,
+      hours_worked_wk,
       house_ten,
       house_resp
       # idhh, year
