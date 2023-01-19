@@ -35,6 +35,7 @@ full_dataset <-
              # "nolwm",
              "ioutcome",
              "caind",
+             "sumhrs",
              # "ethuk11",
              # "fdpch19",
              # "oycirc",
@@ -55,6 +56,7 @@ full_dataset <-
 
 full_dataset |> 
   reduce(bind_rows) |>
+  # ggplot(aes(x = sumhrs)) + geom_histogram()
   # count(ioutcome, satis) |> 
   # pivot_wider(names_from = satis, values_from = n)
   filter(ioutcome == 1, caind == 1) |> 
