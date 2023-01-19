@@ -1,6 +1,6 @@
 library(tidyverse)
 library(tidymodels)
-# library(SPHSUgraphs)
+library(SPHSUgraphs)
 library(furrr)
 library(data.table)
 
@@ -364,6 +364,9 @@ test_data |>
   geom_point() +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed")
 
+test_data |> 
+  bind_cols(predict(mod_lin_lm, new_data = test_data)) |>
+  rsq(uc_income, .pred)
 
 mod_lin_xg <- boost_tree(min_n = 3) |> 
   set_mode("regression") |> 
@@ -380,6 +383,24 @@ mod_lin_xg <- boost_tree(min_n = 3) |>
 test_data |> 
   bind_cols(predict(mod_lin_xg, new_data = test_data)) |> 
   mutate(.pred = if_else(.pred < 0, 0, .pred)) |> 
+  (\(x) {print(rmse(x, uc_income, .pred)); x})() |> 
+  ggplot(aes(uc_income, .pred)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")
+
+mod_lin_knn <- workflow() |> 
+  add_model(nearest_neighbor(mode = "regression")) |> 
+  add_formula(uc_income ~ poly(age, 2) + 
+                i_c +
+                # poly(i_l, 4) + i_0 + i_m +
+                region + disab + educ + gender + emp_len + seeking +
+                house_ten + house_resp + caring + n_hh_emp + n_hh_unemp + n_hh_inact +
+                children + employment + marsta) |> 
+  fit(train_data)
+
+test_data |> 
+  bind_cols(predict(mod_lin_knn, new_data = test_data)) |> 
+  # mutate(.pred = if_else(.pred < 0, 0, .pred)) |> 
   (\(x) {print(rmse(x, uc_income, .pred)); x})() |> 
   ggplot(aes(uc_income, .pred)) +
   geom_point() +
@@ -405,4 +426,3 @@ test_data |>
   ggplot(aes(uc_income, .pred)) +
   geom_point() +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed")
-

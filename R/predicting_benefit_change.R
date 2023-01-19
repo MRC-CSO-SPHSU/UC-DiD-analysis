@@ -68,11 +68,11 @@ wf_diff_knn <- workflow() |>
 fit_diff_knn <- fit(wf_diff_knn,
                     data = train_data)
 
-nearest_neighbor("regression") |> 
-  fit(
-    benefit_change ~ .,
-    data = train_data
-  )
+# nearest_neighbor("regression") |> 
+#   fit(
+#     benefit_change ~ .,
+#     data = train_data
+#   )
 
 pred_out <- test_data |> 
   bind_cols(predict(fit_diff_knn, new_data = test_data))
@@ -85,4 +85,19 @@ pred_out |>
 
 # linear mod --------------------------------------------------------------
 
-mod_diff_ln <- l
+wf_diff_ln <- workflow() |> 
+  add_model(linear_reg()) |> 
+  add_recipe(rec_bd)
+
+fit_diff_ln <- fit(wf_diff_ln,
+                   data = train_data)
+
+pred_out <- test_data |> 
+  bind_cols(predict(fit_diff_ln, new_data = test_data))
+
+pred_out |> 
+  (\(x) {print(rsq(x, benefit_change, .pred)); x})() |> 
+  ggplot(aes(benefit_change, .pred)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed")
+
