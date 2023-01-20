@@ -4,7 +4,7 @@ output:
   html_document:
     df_print: paged
     toc: true
-    numbered_sections: true
+    number_sections: true
 ---
 
 ```{r setup, include = FALSE}
@@ -22,7 +22,7 @@ source("R/prediction_data_import.R")
 
 ukmod_tidy <- import_ukmod_data()
 
-print_perc <- function(x) sprintf("%.1f%%", 100 * x)
+print_perc <- function(x) paste0(sprintf("%.1f", 100 * x), "\\%")
 
 ```
 
@@ -110,7 +110,12 @@ pred_uc_income |>
 
 ```
 
-For this model, $R^2 =$ `r round(uc_rsq, 3)` and root mean squared error $RMSE =$ `r round(uc_rmse, 1)`
+```{r, echo=FALSE, results='asis'}
+
+cat(glue::glue("For this model, $R^2 = {round(uc_rsq, 3)}$ and root mean squared error $RMSE = {round(uc_rmse, 1)}$"))
+
+
+```
 
 ### Legacy benefit receipt amount
 
@@ -151,7 +156,13 @@ pred_lb_income |>
 
 ```
 
-For this model, $R^2 =$ `r round(lb_rsq, 3)` and root mean squared error $RMSE =$ `r round(lb_rmse, 1)`
+
+```{r, echo=FALSE, results='asis'}
+
+cat(glue::glue("For this model, $R^2 = {round(lb_rsq, 3)}$ and root mean squared error $RMSE = {round(lb_rmse, 1)}$"))
+
+
+```
 
 ### Plotting both income types
 
@@ -204,7 +215,13 @@ bc_rsq <- rsq_vec(pred_benefit_change$benefit_change, pred_benefit_change$.pred)
 bc_rmse <- rmse_vec(pred_benefit_change$benefit_change, pred_benefit_change$.pred)
 ```
 
-For this model, $R^2 =$ `r round(bc_rsq, 3)` and root mean squared error $RMSE =$ `r round(bc_rmse, 1)`
+```{r, echo=FALSE, results='asis'}
+
+cat(glue::glue("For this model, $R^2 = {round(bc_rsq, 3)}$ and root mean squared error $RMSE = {round(bc_rmse, 1)}$"))
+
+
+```
+
 
 ### Plotting
 
@@ -223,11 +240,11 @@ pred_benefit_change |>
 ```{r}
 model_data_tri <- model_data |> 
   mutate(benefit_change = case_when(
-    abs(benefit_change/lba_income) < 0.02 ~ "No change",
     benefit_change/lba_income >= 0.02 ~ "Increase",
+    abs(benefit_change/lba_income) < 0.02 ~ "No change",
     TRUE ~ "Decrease"
   ),
-  benefit_change = factor(benefit_change)) |> 
+  benefit_change = factor(benefit_change, levels = c("Decrease", "No change", "Increase"))) |> 
   select(-uc_income, -lba_income, -uc_receipt)
 
 data_split <- initial_split(model_data_tri, prop = 0.8, strata = year)
@@ -268,7 +285,7 @@ pred_benefit_change_prob <-
   bind_cols(predict(mod_ml_tri, new_data = test_data, type = "prob"))
 
 acc_bc <- pred_benefit_change %$% accuracy_vec(benefit_change, .pred_class)
-roc_inc <- pred_benefit_change_prob %$% roc_auc_vec(benefit_change, as.matrix(data.frame(.pred_Decrease, .pred_Increase, `.pred_No change`)))
+roc_inc <- pred_benefit_change_prob %$% roc_auc_vec(benefit_change, as.matrix(data.frame(.pred_Decrease, `.pred_No change`, .pred_Increase)))
 
 sens_dec <- pred_benefit_change |> 
   mutate(ob_decrease = fct_other(benefit_change, keep = "Decrease"), 
@@ -281,13 +298,30 @@ sens_inc <- pred_benefit_change |>
     sens_vec(ob_increase, pred_increase)
 ```
 
-This model has an accuracy of `r print_perc(acc_bc)`, a sensitivity for detecting decreasing benefit changes of `r print_perc(sens_dec)` and a sensitivity of detecting increasing benefits of `r print_perc(sens_inc)` (area under ROC-curve = `r round(roc_inc, 3)`).
+```{r}
+pred_benefit_change |> 
+  ggplot(aes(benefit_change, .pred_class)) +
+  geom_count(shape = 15) +
+  ylab("Predicted change") +
+  xlab("Observed change") +
+  scale_size_continuous(range = c(1, 40))
+```
+
+
+```{r, echo = FALSE, results = 'asis'}
+
+cat(glue::glue("This model has an accuracy of ${print_perc(acc_bc)}$, a sensitivity for detecting decreasing benefit changes of ${print_perc(sens_dec)}$ and a sensitivity of detecting increasing benefits of ${print_perc(sens_inc)}$ (area under ROC-curve = ${round(roc_inc, 3)}$)."))
+
+```
+
 
 ### ROC curves
 
 ```{r}
-pred_benefit_change_prob |> roc_curve(benefit_change, .pred_Decrease, .pred_Increase, `.pred_No change`) |> autoplot()
+pred_benefit_change_prob |> roc_curve(benefit_change, .pred_Decrease, `.pred_No change`, .pred_Increase) |> autoplot()
 ```
+
+Proportions of predictions within each category of observed benefit change:
 
 ```{r}
 pred_benefit_change %$% table(benefit_change, .pred_class) |> prop.table(margin = 1)
