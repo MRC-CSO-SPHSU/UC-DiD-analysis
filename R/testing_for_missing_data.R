@@ -36,6 +36,7 @@ full_dataset <-
              "ioutcome",
              "caind",
              "sumhrs",
+             "inecac05",
              # "ethuk11",
              # "fdpch19",
              # "oycirc",
@@ -49,6 +50,7 @@ full_dataset <-
              # "limitk",
              # "pwta18",
              # "pwta20",
+             # "stat",
              "benfts"),
            as.data.table = TRUE
           )
@@ -64,4 +66,7 @@ full_dataset |>
 
 
 full_dataset |> 
-  reduce(bind_rows) 
+  reduce(bind_rows) |> 
+  select(sumhrs, inecac05) |> 
+  mutate(sumhrsna = if_else(sumhrs == -8, 1, 0)) |> 
+  summarise(sum(sumhrsna)/n())
