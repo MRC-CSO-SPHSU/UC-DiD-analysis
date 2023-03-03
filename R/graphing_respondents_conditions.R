@@ -80,7 +80,7 @@ apr14_mar21_dt[,housing := rowSums(.SD == 2), .SD = 2:11]
 apr14_mar21_dt[,income_s := rowSums(.SD == 4), .SD = 2:11]
 apr14_mar21_dt[,jsa := rowSums(.SD == 5), .SD = 2:11]
 apr14_mar21_dt[,disab := rowSums(.SD == 6), .SD = 2:11]
-apr14_mar21_dt[,other := rowSums(.SD), .SD = tax_cr:jsa]
+apr14_mar21_dt[,other := as.numeric(rowSums(.SD)>0), .SD = tax_cr:jsa]
 
 (perc_other <- apr14_mar21_dt |> 
   as_tibble() |> 
