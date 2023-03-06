@@ -69,7 +69,7 @@ apr14_mar21_dt[,housing := rowSums(.SD == 2), .SD = 2:11]
 apr14_mar21_dt[,income_s := rowSums(.SD == 4), .SD = 2:11]
 apr14_mar21_dt[,jsa := rowSums(.SD == 5), .SD = 2:11]
 apr14_mar21_dt[,disab := rowSums(.SD == 6), .SD = 2:11]
-apr14_mar21_dt[,other := as.numeric(rowSums(.SD)>0), .SD = tax_cr:jsa]  # This bit is *still* counting three benefits as three people claiming a benefit
+apr14_mar21_dt[,other := as.numeric(rowSums(.SD)>0), .SD = tax_cr:jsa]
 
 # linear model testing uc effect on earned income not mediated through hours worked
 library(magrittr)
