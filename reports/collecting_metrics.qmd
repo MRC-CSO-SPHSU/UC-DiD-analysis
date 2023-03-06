@@ -40,7 +40,6 @@ The logistic regression model has a sensitivity of `r paste_perc(sens_log)` and 
 
 The boost tree model has a sensitivity of `r paste_perc(sens_xg)` and a specificity of `r paste_perc(spec_xg)`. Using this prediction model, `r paste_perc(1 - sens_xg)` of UC-eligible participants will be absent from the analysis; `r paste_perc(1 - spec_xg)` of non-UC-eligible participants will be included in the analysis.
 
-
 ## Other cutoff points
 
 Decreasing threshold to 30% probability of receiving UC:
@@ -66,7 +65,6 @@ cv_class_log_no_hh |>
   summarise(estimate = mean(.estimate))
 ```
 
-
 ```{r}
 cv_class_xg_no_hh |>
   select(-splits,-.metrics,-.notes) |>
@@ -87,4 +85,3 @@ cv_class_xg_no_hh |>
   group_by(.metric) |> 
   summarise(estimate = mean(.estimate))
 ```
-
