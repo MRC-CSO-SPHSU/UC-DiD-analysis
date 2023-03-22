@@ -29,6 +29,14 @@ full_dataset <-
              "anxious",
              "happy",
              "worth",
+             "grsswk",
+             "grsswk2",
+             "empmon",
+             # "nolwm",
+             "ioutcome",
+             "caind",
+             "sumhrs",
+             "inecac05",
              # "ethuk11",
              # "fdpch19",
              # "oycirc",
@@ -42,14 +50,23 @@ full_dataset <-
              # "limitk",
              # "pwta18",
              # "pwta20",
+             # "stat",
              "benfts"),
            as.data.table = TRUE
           )
 
 
 full_dataset |> 
+  reduce(bind_rows) |>
+  # ggplot(aes(x = sumhrs)) + geom_histogram()
+  # count(ioutcome, satis) |> 
+  # pivot_wider(names_from = satis, values_from = n)
+  filter(ioutcome == 1, caind == 1) |> 
+  summarise(across(.fns = ~sum(.x == -8|.x == -9)/n()))
+
+
+full_dataset |> 
   reduce(bind_rows) |> 
-  summarise(across(.fns = ~sum(.x == -8)/n()))
-
-
-
+  select(sumhrs, inecac05) |> 
+  mutate(sumhrsna = if_else(sumhrs == -8, 1, 0)) |> 
+  summarise(sum(sumhrsna)/n())

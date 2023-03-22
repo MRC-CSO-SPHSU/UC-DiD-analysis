@@ -1,0 +1,390 @@
+---
+title: "Prediction models for benefit income"
+author: "Andy Baxter"
+format: pptx
+editor: visual
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(tidymodels)
+library(SPHSUgraphs)
+library(furrr)
+library(janitor)
+library(data.table)
+library(themis)
+library(magrittr)
+
+source("R/prediction_data_import.R")
+
+ukmod_tidy <- import_ukmod_data()
+
+print_perc <- function(x) paste0(sprintf("%.1f", 100 * as.numeric(x)), "%")
+
+```
+
+# Predicting benefit receipt from UKMod data
+
+## The problem
+
+::: columns
+::: {.column width="40%"}
+-   Multiple pathways of impact of benefits receipt on mental health
+-   Ideally a coefficient for each pathway would give an estimate for microsimulation process
+-   Not all data are available in APS
+    -   Benefit amount received
+:::
+
+::: {.column width="60%"}
+![](output/mediators_dag.png)
+:::
+:::
+
+# Possible solution - Machine learning method
+
+```{r echo = TRUE, eval=FALSE}
+train_data_benefit_change <- train_data 
+test_data_benefit_change <- test_data
+
+
+rc_income <- recipe(benefit_change ~ .,
+                 data = train_data_benefit_change) |>
+  step_interact(
+    ~ starts_with('gender_'):starts_with('children_') + 
+      starts_with('gender_'):starts_with('children_'):starts_with('emp_len_') + 
+      starts_with('children_'):starts_with('emp_len_') + 
+      student:starts_with('children_') + student:starts_with('caring_') + 
+      starts_with('marsta_') * starts_with('gender_') * starts_with('children_')
+  )
+
+wf_ln <- workflow() |> 
+  add_recipe(rc_income) |> 
+  add_model(mod_ln)
+
+mod_ln_lb <- fit(wf_ln, data = train_data_benefit_change)
+```
+
+# The data
+
+```{r data_import}
+
+model_data <- ukmod_tidy |> 
+  group_by(year, idhh) |> 
+  mutate(lba_income = sum(lba_income),
+         uc_income = max(uc_income),
+         uc_receipt = max(uc_receipt),
+         n_hh_emp = sum(employment == "Employed"),
+         n_hh_unemp = sum(employment == "Unemployed"),
+         n_hh_inact = sum(employment == "Inactive")) |> 
+  ungroup() |> 
+  filter(age > 17 & age < 66) |> 
+  select(-idhh, -i_0, -i_m, -i_l, - income, -employment) |> 
+  mutate(
+    year = as.integer(year),
+    # p_hh_emp = if_else(employment == "Employed" & n_hh_emp > 0, 1, 0),
+    n_hh_emp = fct_other(factor(n_hh_emp), c("0", "1"), other_level = "2+"),
+    n_hh_unemp = fct_other(factor(n_hh_unemp), c("0", "1"), other_level = "2+"),
+    n_hh_inact = fct_other(factor(n_hh_inact), c("0", "1"), other_level = "2+"),
+    benefit_change = uc_income - lba_income,
+    ) |> 
+  fastDummies::dummy_cols(remove_first_dummy = TRUE, remove_selected_columns = TRUE) |> 
+  janitor::clean_names() |> 
+  select(-starts_with("n_hh")) |>
+  mutate(uc_receipt = factor(uc_receipt, levels = 1:0, labels = c("Yes", "No")))
+
+set.seed(123)
+
+data_split <- initial_split(model_data, prop = 0.8, strata = year)
+
+train_data <- training(data_split) |> select(-year)
+test_data <- testing(data_split) |> select(-year)
+
+knitr::kable(head(model_data[,1:5], 10))
+
+```
+
+# Predictor variables
+
+These variables are common to UKMOD outputs and APS survey data
+
+|                          |                                 |                        |
+|------------------------|------------------------|------------------------|
+| Age                      | Education                       | Children               |
+| Hours worked in week     | Gender                          | Income                 |
+| UK/EU citizen            | Marital status                  | Housing responsibility |
+| Disability               | Region                          | Caring                 |
+| Economic status/activity | Employment/length of employment |                        |
+| Student                  | Seeking work                    |                        |
+
+# Possibility 1 - Predicting benefit types separately
+
+# UC receipt
+
+```{r}
+
+train_data_uc_income <- train_data |> select(-uc_receipt, -lba_income, -benefit_change)
+test_data_uc_income <- test_data |> select(-uc_receipt, -lba_income, -benefit_change)
+
+rc_income <- recipe(uc_income ~ .,
+                 data = train_data_uc_income) |>
+  step_interact(
+    ~ starts_with('gender_'):starts_with('children_') + 
+      starts_with('gender_'):starts_with('children_'):starts_with('emp_len_') + 
+      starts_with('children_'):starts_with('emp_len_') + 
+      student:starts_with('children_') + student:starts_with('caring_') + 
+      starts_with('marsta_') * starts_with('gender_') * starts_with('children_')
+  )
+
+mod_ln <- linear_reg(mode = "regression")
+
+wf_ln <- workflow() |> 
+  add_recipe(rc_income) |> 
+  add_model(mod_ln)
+
+mod_ln_uc <- fit(wf_ln, data = train_data_uc_income)
+
+pred_uc_income <- 
+  test_data_uc_income |> 
+  bind_cols(predict(mod_ln_uc, new_data = test_data_uc_income))
+
+uc_rsq <- rsq_vec(pred_uc_income$uc_income, pred_uc_income$.pred)
+uc_rmse <- rmse_vec(pred_uc_income$uc_income, pred_uc_income$.pred)
+
+pred_uc_income |> 
+  select(observed  = uc_income, predicted = .pred) |> 
+  ggplot(aes(observed, predicted)) +
+  geom_point(colour = sphsu_cols("Pumpkin"), names = FALSE) +
+   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_hline(yintercept = 0) +
+  scale_colour_sphsu()
+
+```
+
+```{r, echo=FALSE, results='asis'}
+
+cat(glue::glue("For this model, $R^2 = {round(uc_rsq, 3)}$ and root mean squared error $RMSE = {round(uc_rmse, 1)}$"))
+
+
+```
+
+------------------------------------------------------------------------
+
+# Legacy benefit receipt
+
+```{r}
+train_data_lba_income <- train_data |> select(-uc_receipt, -uc_income, -benefit_change)
+test_data_lba_income <- test_data |> select(-uc_receipt, -uc_income, -benefit_change)
+
+rc_income <- recipe(lba_income ~ .,
+                 data = train_data_lba_income) |>
+  step_interact(
+    ~ starts_with('gender_'):starts_with('children_') + 
+      starts_with('gender_'):starts_with('children_'):starts_with('emp_len_') + 
+      starts_with('children_'):starts_with('emp_len_') + 
+      student:starts_with('children_') + student:starts_with('caring_') + 
+      starts_with('marsta_') * starts_with('gender_') * starts_with('children_')
+  )
+
+wf_ln <- workflow() |> 
+  add_recipe(rc_income) |> 
+  add_model(mod_ln)
+
+mod_ln_lb <- fit(wf_ln, data = train_data_lba_income)
+
+pred_lb_income <- 
+  test_data_lba_income |> 
+  bind_cols(predict(mod_ln_lb, new_data = test_data_lba_income))
+
+lb_rsq <- rsq_vec(pred_lb_income$lba_income, pred_lb_income$.pred)
+lb_rmse <- rmse_vec(pred_lb_income$lba_income, pred_lb_income$.pred)
+
+pred_lb_income |> 
+  select(observed  = lba_income, predicted = .pred) |> 
+  ggplot(aes(observed, predicted)) +
+  geom_point(colour = sphsu_cols("University Blue", names = FALSE)) +
+   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_hline(yintercept = 0) +
+  scale_colour_sphsu()
+
+```
+
+```{r, echo=FALSE, results='asis'}
+
+cat(glue::glue("For this model, $R^2 = {round(lb_rsq, 3)}$ and root mean squared error $RMSE = {round(lb_rmse, 1)}$"))
+
+
+```
+
+------------------------------------------------------------------------
+
+# Plotting both income types
+
+```{r}
+
+pred_uc_income |> select(observed = uc_income, predicted = .pred) |> 
+  mutate(source = "Universal Credit") |> 
+  bind_rows(
+    pred_lb_income |> select(observed = lba_income, predicted = .pred) |> 
+  mutate(source = "Legacy Benefits") 
+  ) |> 
+  ggplot(aes(observed, predicted, colour = source)) +
+  geom_point() +
+   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_hline(yintercept = 0) +
+  facet_wrap(~source) +
+  scale_colour_sphsu()
+
+```
+
+# Possibility 2 - Predicting difference
+
+```{r}
+
+train_data_benefit_change <- train_data |> select(-uc_receipt, -uc_income, -lba_income)
+test_data_benefit_change <- test_data |> select(-uc_receipt, -uc_income, -lba_income)
+
+
+rc_income <- recipe(benefit_change ~ .,
+                 data = train_data_benefit_change) |>
+  step_interact(
+    ~ starts_with('gender_'):starts_with('children_') + 
+      starts_with('gender_'):starts_with('children_'):starts_with('emp_len_') + 
+      starts_with('children_'):starts_with('emp_len_') + 
+      student:starts_with('children_') + student:starts_with('caring_') + 
+      starts_with('marsta_') * starts_with('gender_') * starts_with('children_')
+  )
+
+wf_ln <- workflow() |> 
+  add_recipe(rc_income) |> 
+  add_model(mod_ln)
+
+mod_ln_lb <- fit(wf_ln, data = train_data_benefit_change)
+
+pred_benefit_change <- 
+  test_data_benefit_change |> 
+  bind_cols(predict(mod_ln_lb, new_data = test_data_benefit_change))
+
+bc_rsq <- rsq_vec(pred_benefit_change$benefit_change, pred_benefit_change$.pred)
+bc_rmse <- rmse_vec(pred_benefit_change$benefit_change, pred_benefit_change$.pred)
+
+pred_benefit_change |> 
+  select(observed  = benefit_change, predicted = .pred) |> 
+  ggplot(aes(observed, predicted)) +
+  geom_point() +
+   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_hline(yintercept = 0) +
+  scale_colour_sphsu()
+
+```
+
+```{r, echo=FALSE, results='asis'}
+
+cat(glue::glue("For this model, $R^2 = {round(bc_rsq, 3)}$ and root mean squared error $RMSE = {round(bc_rmse, 1)}$"))
+
+
+```
+
+# Possibility 3 - Trichotomise
+
+```{r}
+model_data_tri <- model_data |> 
+  mutate(benefit_change = case_when(
+    uc_income == 0 & lba_income == 0 ~ "No change",
+    benefit_change/lba_income >= 0.02 ~ "Increase",
+    abs(benefit_change/lba_income) < 0.02 ~ "No change",
+    TRUE ~ "Decrease"
+  ),
+  benefit_change = factor(benefit_change, levels = c("Decrease", "No change", "Increase"))) |> 
+  select(-uc_income, -lba_income, -uc_receipt)
+
+data_split <- initial_split(model_data_tri, prop = 0.8, strata = year)
+
+train_data <- training(data_split) |> select(-year)
+test_data <- testing(data_split) |> select(-year)
+
+
+rc_income <- recipe(benefit_change ~ .,
+                 data = train_data) |>
+  step_interact(
+    ~ starts_with('gender_'):starts_with('children_') + 
+      starts_with('gender_'):starts_with('children_'):starts_with('emp_len_') + 
+      starts_with('children_'):starts_with('emp_len_') + 
+      student:starts_with('children_') + student:starts_with('caring_') + 
+      starts_with('marsta_') * starts_with('gender_') * starts_with('children_')
+  )
+
+mod_mlogit <- multinom_reg(penalty = double(1), mixture = double(1)) |> 
+  set_engine("glmnet")
+
+
+imbal_rec <- rc_income |> 
+  step_smote(benefit_change, over_ratio = 0.75)
+
+wf_ln <- workflow() |> 
+  add_recipe(imbal_rec) |> 
+  add_model(mod_mlogit)
+
+mod_ml_tri <- fit(wf_ln, data = train_data)
+
+pred_benefit_change <- 
+  test_data |> 
+  bind_cols(predict(mod_ml_tri, new_data = test_data))
+
+pred_benefit_change_prob <- 
+  test_data |> 
+  bind_cols(predict(mod_ml_tri, new_data = test_data, type = "prob"))
+
+acc_bc <- pred_benefit_change %$% accuracy_vec(benefit_change, .pred_class)
+roc_inc <- pred_benefit_change_prob %$% roc_auc_vec(benefit_change, as.matrix(data.frame(.pred_Decrease, `.pred_No change`, .pred_Increase)))
+
+sens_dec <- pred_benefit_change |> 
+  mutate(ob_decrease = fct_other(benefit_change, keep = "Decrease"), 
+         pred_decrease = fct_other(.pred_class, keep = "Decrease")) %$%
+    sens_vec(ob_decrease, pred_decrease)
+
+sens_inc <- pred_benefit_change |> 
+  mutate(ob_increase = fct_other(benefit_change, keep = "Increase"), 
+         pred_increase = fct_other(.pred_class, keep = "Increase")) %$%
+    sens_vec(ob_increase, pred_increase)
+pred_benefit_change |> 
+  ggplot(aes(benefit_change, .pred_class)) +
+  geom_count(shape = 15) +
+  ylab("Predicted change") +
+  xlab("Observed change") +
+  scale_size_continuous(range = c(1, 40))
+```
+
+# Accuracy
+
+::: columns
+::: {.column width="40%"}
+```{r, echo = FALSE, results = 'asis'}
+
+cat(glue::glue("This model has an accuracy of ${print_perc(acc_bc)}$, a sensitivity for detecting decreasing benefit changes of ${print_perc(sens_dec)}$ and a sensitivity of detecting increasing benefits of ${print_perc(sens_inc)}$ (area under ROC-curve = ${round(roc_inc, 3)}$)."))
+
+```
+:::
+
+::: {.column width="60%"}
+### ROC curves
+
+```{r}
+pred_benefit_change_prob |> roc_curve(benefit_change, .pred_Decrease, `.pred_No change`, .pred_Increase) |> autoplot()
+```
+:::
+:::
+
+# Proportions of predictions within each category of observed benefit change:
+
+```{r}
+props <- pred_benefit_change %$% table(benefit_change, .pred_class) |> prop.table(margin = 1) 
+
+for (i in 1:3) {
+    for (j in 1:3) {
+        props[i,j] <- print_perc(props[i,j])
+    }
+}
+
+props |> knitr::kable()
+```

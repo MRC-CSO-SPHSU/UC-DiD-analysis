@@ -30,27 +30,44 @@ apr14_mar21 <- c(
   "tpbn1310", 
   "refdte"))
 
+wts1 <- c(
+  "data/fst_files/apr14_mar15.fst",
+  "data/fst_files/apr15_mar16.fst",
+  "data/fst_files/apr16_mar17.fst",
+  "data/fst_files/apr17_mar18.fst",
+  "data/fst_files/apr18_mar19.fst"
+  # "data/fst_files/apr19_mar20.fst"
+  # "data/fst_files/apr20_mar21.fst"
+) |> map(read_fst, "pwta18") |> 
+  map(`colnames<-`, "weight")
+
+wts2 <- c("data/fst_files/apr19_mar20.fst",
+          "data/fst_files/apr20_mar21.fst") |>
+  map(read_fst, "pwta20") |> 
+  map(`colnames<-`, "weight")
 
 
 n_uc <- apr14_mar21 |> 
+  map2(append(wts1, wts2), cbind) |> 
   reduce(bind_rows) |> 
   mutate(date = floor_date(dmy(refdte), "months"),
          across(tpbn1301:tpbn1310, ~.x == 1)) |> 
   rowwise() |> 
-         mutate(uc = sum(tpbn1301:tpbn1310))
+         mutate(uc = sum(tpbn1301:tpbn1310)*weight)
 
 n_uc |> 
   group_by(date) |>
-  select(date, uc) |> 
-  summarise(prop_uc = sum(uc)/n()) |> 
+  select(date, uc, weight) |> 
+  summarise(prop_uc = sum(uc)/sum(weight)) |> 
   ggplot(aes(date, prop_uc)) +
-  geom_col(fill = sphsu_cols("University Blue"), width = 31) +
+  geom_col(fill = sphsu_cols("University Blue"), width = 31, position = "identity") +
   scale_x_date("Year") +
   scale_y_continuous("Percentage of respondents on UC", labels = scales::percent,
                      expand = expansion(mult = c(0, 0.05)))
 
 
 apr14_mar21_dt <- apr14_mar21 |> 
+  map2(append(wts1, wts2), cbind) |> 
   reduce(bind_rows) |> 
   mutate(date = floor_date(dmy(refdte), "months")) |> 
   data.table()
@@ -63,15 +80,15 @@ apr14_mar21_dt[,housing := rowSums(.SD == 2), .SD = 2:11]
 apr14_mar21_dt[,income_s := rowSums(.SD == 4), .SD = 2:11]
 apr14_mar21_dt[,jsa := rowSums(.SD == 5), .SD = 2:11]
 apr14_mar21_dt[,disab := rowSums(.SD == 6), .SD = 2:11]
-apr14_mar21_dt[,other := rowSums(.SD), .SD = tax_cr:jsa]
+apr14_mar21_dt[,other := as.numeric(rowSums(.SD)>0), .SD = tax_cr:jsa]
 
 (perc_other <- apr14_mar21_dt |> 
   as_tibble() |> 
   group_by(date) |>
-  select(date, other) |> 
-  summarise(prop_other = sum(other)/n()) |> 
+  select(date, other, weight) |> 
+  summarise(prop_other = sum(other * weight)/sum(weight)) |> 
   ggplot(aes(date, prop_other)) +
-  geom_col(fill = sphsu_cols("Pumpkin"), width = 31) +
+  geom_col(fill = sphsu_cols("Pumpkin"), width = 32) +
   scale_x_date("Year") +
   scale_y_continuous("Respondents on\nLegacy Benefits", labels = scales::percent,
                      expand = expansion(mult = c(0, 0.05))))
@@ -79,17 +96,17 @@ apr14_mar21_dt[,other := rowSums(.SD), .SD = tax_cr:jsa]
 (perc_all <- apr14_mar21_dt |> 
   as_tibble() |> 
   group_by(date) |>
-  select(date, uc) |> 
-  summarise(prop_uc = sum(uc)/n()) |> 
+  select(date, uc, weight) |> 
+  summarise(prop_uc = sum(uc * weight)/sum(weight)) |> 
   ggplot(aes(date, prop_uc)) +
-  geom_col(fill = sphsu_cols("University Blue"), width = 31) +
+  geom_col(fill = sphsu_cols("University Blue"), width = 32, position = "identity") +
   scale_x_date("Year") +
   scale_y_continuous("Respondents on UC", labels = scales::percent,
                      expand = expansion(mult = c(0, 0.05))))
 
 (perc_claim <- apr14_mar21_dt |> 
   group_by(date) |>
-  select(date, uc, other) |> 
+  select(date, uc, other, weight) |> 
   filter(uc == 1 | other == 1) |> 
   mutate(benefits = case_when(
     uc == 1 & other == 1 ~ "Combination",
@@ -98,11 +115,17 @@ apr14_mar21_dt[,other := rowSums(.SD), .SD = tax_cr:jsa]
   ),
   benefits = factor(benefits, levels = c("Legacy Benefits", "Combination", "Universal Credit"))) |> 
   as_tibble() |> 
-  ggplot(aes(date, fill = benefits)) +
-  stat_count(position = "fill", geom = "bar", aes(y = after_stat(count)), width = 31) +
+    # group_by(date, benefits) |> 
+    # summarise(n = sum(weight)) |> 
+  ggplot(aes(date, weight, fill = benefits)) +
+  # geom_col(aes(y = weight), width = 32, position = "fill") +
+    stat_summary(fun = sum, position = "fill", geom = "bar", width = 32) +
+  # stat_sum(aes(y = weight), position = "fill", geom = "bar", width = 31) +
+  # stat_count(position = "fill", geom = "bar", aes(y = after_stat(count)), width = 31, position = "identity") +
   scale_fill_manual(name = "Benefits claimed", values = sphsu_cols("Pumpkin", "Leaf", "University Blue", names = FALSE)) +
   scale_x_date("Year") +
   theme(legend.position = "bottom") +
+    guides(size = guide_none()) +
   scale_y_continuous("Claimant by benefit types", labels = scales::percent,
                      expand = expansion(mult = c(0, 0.05))))
 
@@ -114,7 +137,7 @@ patch +
                   subtitle = "April 2014 - March 2021")
 
 
-ggsave(filename = "graphs/proporrions_benefit_type.png", width = 20, height = 24,
+ggsave(filename = "graphs/proporrions_benefit_type_weighted.png", width = 20, height = 24,
        units = "cm", dpi = 400)
 
 
@@ -136,3 +159,59 @@ ggsave(filename = "graphs/proporrions_benefit_type.png", width = 20, height = 24
     theme(legend.position = "bottom") +
     scale_y_continuous("Claimant by benefit types",
                        expand = expansion(mult = c(0, 0.05))))
+
+
+
+# compare with proportion on UC as reported by statxplore -----------------
+
+
+pop_uc <- read_rds("data/pop_on_uc.rds")
+
+(perc_all <- apr14_mar21_dt |> 
+    as_tibble() |> 
+    group_by(date) |>
+    select(date, uc, weight) |> 
+    summarise(prop_uc = sum(uc * weight)/sum(weight)) |> 
+    ggplot(aes(date, prop_uc)) +
+    geom_col(fill = sphsu_cols("University Blue"), width = 32, position = "identity") +
+    scale_x_date("Year") +
+    scale_y_continuous("Respondents on UC", labels = scales::percent,
+                       expand = expansion(mult = c(0, 0.05))))
+
+(perc_statxplore <- pop_uc |> 
+  mutate(prop_uc = n_uc / pop) |> 
+    ggplot(aes(date, prop_uc)) +
+    geom_col(fill = sphsu_cols("University Blue"), width = 32, position = "identity") +
+    scale_x_date("Year") +
+    scale_y_continuous("Respondents on UC", labels = scales::percent,
+                       expand = expansion(mult = c(0, 0.05)))
+)
+
+perc_all / perc_statxplore
+
+pop_uc |> 
+  mutate(prop_uc_obs = n_uc / pop)
+
+comb_uc_rec <- apr14_mar21_dt |> 
+  as_tibble() |> 
+  group_by(date) |>
+  select(date, uc, weight) |> 
+  summarise(prop_uc_rep = sum(uc * weight)/sum(weight)) |> 
+  inner_join(pop_uc |> 
+               mutate(prop_uc_obs = n_uc / pop),
+             by = "date")
+
+comb_uc_rec |> 
+  ggplot(aes(date, prop_uc_rep)) +
+  geom_col(aes(linetype = "Reported"), fill = sphsu_cols("University Blue"), width = 32, position = "identity") +
+  geom_step(aes(y = prop_uc_obs, linetype = "Observed"), colour = sphsu_cols("University Blue"), linewidth = 0.5) +
+  scale_x_date("Year") +
+  guides(linetype = guide_legend(title = "Data source",
+                                 override.aes = list(fill = c(NA, sphsu_cols("University Blue")),
+                                                     linetype = c(1, 0)))) +
+  scale_y_continuous("Respondents on UC", labels = scales::percent,
+                     expand = expansion(mult = c(0, 0.05))) +
+  plot_annotation(title = "Proportions of working-age adults reporting receiving UC vs observed rates",
+                  subtitle = "April 2014 - March 2021")
+
+ggsave(filename = "graphs/comparison_uc_reporting.png", width = 20, height = 10, dpi = 400, units = "cm")
