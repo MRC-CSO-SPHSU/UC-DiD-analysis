@@ -6,6 +6,7 @@ library(data.table)
 
 source("R/prediction_data_import.R")
 
+
 ukmod_tidy <- import_ukmod_data()
 
 # predict data from UKMOD -------------------------------------------------
@@ -118,7 +119,6 @@ mod_class_log <- logistic_reg() |>
   set_engine("glm") |> 
   set_mode("classification")
 
-
 recipe_class_log <- recipe(
   uc_receipt ~ age + i_c +
     region + disab + educ + emp_len + 
@@ -130,6 +130,7 @@ recipe_class_log <- recipe(
   step_dummy(all_nominal_predictors()) |> 
   step_interact(
     ~ starts_with('gender_'):starts_with('children_') + starts_with('gender_'):starts_with('children_'):starts_with('employment_') + starts_with('children_'):starts_with('employment_') + student:starts_with('children_') + student:starts_with('caring_') + starts_with('marsta_'):starts_with('employment_') + starts_with('n_hh_emp_'):starts_with('children_') + starts_with('n_hh_unemp_'):starts_with('children_') + starts_with('n_hh_inact_'):starts_with('children_') + starts_with('n_hh_emp_'):starts_with('caring_') + starts_with('n_hh_unemp_'):starts_with('caring_') + starts_with('n_hh_inact_'):starts_with('caring_') + starts_with('marsta_')*starts_with('gender_')*starts_with('children_')
+
   )
 
 
@@ -288,7 +289,6 @@ pred_class_me |>
   geom_bar(position = "fill") +
   scale_y_continuous("Perc predicted", labels = scales::label_percent()) +
   facet_wrap(~ prob, nrow = 1)
-
 
 ## knn ---------------------------------------------------------------------
 
