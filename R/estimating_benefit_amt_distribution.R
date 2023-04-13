@@ -1,7 +1,70 @@
+library(patchwork)
 library(goft)
+library(SPHSUgraphs)
 source("R/prediction_data_import.R")
 
 ukmod_tidy <- import_ukmod_data()
+
+ukmod_tidy |> 
+  select(uc_income, lba_income) |> 
+  pivot_longer(uc_income:lba_income, names_to = "benefit", values_to = "income", names_pattern = "(.*)_income") |> 
+  filter(income < quantile(income, 0.99)) |> 
+  ggplot(aes(income, y = after_stat(count/sum(count)), fill = benefit)) +
+  geom_histogram(bins = 30) +
+  scale_fill_sphsu(name = "Benefit", labels = c("Legacy Benefits", "Universal Credit")) +
+  scale_x_continuous("Benefit income (/yr)", labels = label_dollar(prefix = "£")) +
+  scale_y_continuous("", expand = expansion(mult = c(0, 0.01)), labels = label_percent()) +
+  facet_wrap(~benefit) +
+  theme(strip.text = element_blank())
+
+gamma_params <- test_df |> 
+  select(uc_income, lba_income, dwt) |> 
+  pivot_longer(uc_income:lba_income, names_to = "benefit", values_to = "income", names_pattern = "(.*)_income") |> 
+  filter(income !=0) |> 
+  group_by(benefit) |> 
+  summarise(gamma_fit = list(as_tibble(t(gamma_fit(income))))) |> 
+  unnest(gamma_fit)
+
+p1 <- test_df |> 
+  select(uc_income, lba_income, dwt) |> 
+  pivot_longer(uc_income:lba_income, names_to = "benefit", values_to = "income", names_pattern = "(.*)_income") |> 
+  mutate(benefit = factor(benefit, levels = c("lba", "uc"))) |> 
+  filter(income < quantile(income, 0.999)) |> 
+  ggplot(aes(income, y = after_stat(count/sum(count)), weight = dwt, fill = benefit)) +
+  geom_histogram(bins = 30) +
+  scale_fill_manual(name = "Benefit", labels = c("Legacy Benefits", "Universal Credit"),
+                    values = sphsu_cols("Pumpkin", "University Blue", names = FALSE)) +
+  scale_x_continuous("Benefit income (/yr)", labels = label_dollar(prefix = "£")) +
+  scale_y_continuous("Percent", expand = expansion(mult = c(0, 0.01)), labels = label_percent()) +
+  facet_wrap(~benefit) +
+  theme(strip.text = element_blank())
+
+p2 <- test_df |> 
+  select(uc_income, lba_income, dwt) |> 
+  pivot_longer(uc_income:lba_income, names_to = "benefit", values_to = "income", names_pattern = "(.*)_income") |> 
+  mutate(benefit = factor(benefit, levels = c("lba", "uc"))) |> 
+  filter(income !=0, income < quantile(income, 0.999)) |> 
+  ggplot(aes(income, y = after_stat(density), weight = dwt, fill = benefit)) +
+  geom_histogram(bins = 30) +
+  geom_function(data = gamma_params |> filter(benefit == "lba"),
+                fun = dgamma, args = list(shape = gamma_params$shape[1], scale = gamma_params$scale[1]),
+                inherit.aes = FALSE, linewidth = 0.75, linetype = "longdash") +
+  geom_function(data = gamma_params |> filter(benefit == "uc"),
+                fun = dgamma, args = list(shape = gamma_params$shape[2], scale = gamma_params$scale[2]),
+                inherit.aes = FALSE, linewidth = 0.75, linetype = "longdash") +
+  scale_fill_manual(name = "Benefit", labels = c("Legacy Benefits", "Universal Credit"),
+                    values = sphsu_cols("Pumpkin", "University Blue", names = FALSE)) +
+  scale_x_continuous("Benefit income (/yr; excluding £0)", labels = label_dollar(prefix = "£")) +
+  scale_y_continuous("Density", expand = expansion(mult = c(0, 0.01))) +
+  facet_wrap(~benefit) +
+  theme(strip.text = element_blank())
+
+
+p1/p2 + plot_layout(guides = "collect")
+
+ukmod_tidy |> 
+  ggplot(aes(uc_income, y = after_stat(count))) +
+  geom_histogram(bins = 4)
 
 ukmod_uc <- ukmod_tidy |> 
   mutate(benefit = uc_income) |> 
