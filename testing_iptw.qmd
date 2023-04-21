@@ -9,12 +9,14 @@ editor: visual
 
 ```{r setup}
 #| echo: false
-library(magrittr, include.only = "`%$%`")
-library(tidyverse)
-library(furrr)
-library(data.table)
-library(tableone)
-library(survey)
+#| message: false
+#| warning: false
+library(magrittr, include.only = "%$%", quietly = TRUE)
+library(tidyverse, quietly = TRUE)
+library(furrr, quietly = TRUE)
+library(data.table, quietly = TRUE)
+library(tableone, quietly = TRUE)
+library(survey, quietly = TRUE)
 
 input_parts <-
   tibble(
@@ -295,12 +297,12 @@ test_df |>
   geom_function(fun = dgamma, args = list(shape = alpha_param, scale = beta_param), colour = "green")
 
 ```
-## let's gamma this one!
+## Gamma distrubution
 
 ```{r}
 mod3_g_a <- test_df |> 
   mutate(yem = yem + 1) %$%
-  glm(yem ~ 1, family = Gamma(link = "inverse"))
+  glm(yem ~ employed + dms, family = Gamma(link = "inverse"))
 
 mod3_g_b <- test_df |> 
   mutate(yem = yem + 1) %$%
@@ -319,26 +321,37 @@ yem_weighted <- test_df |>
     weight_yem = wg0/wg1,
     .before = year
   )
+```
 
+### Testing fit
+
+```{r}
 svy_style_unw <- svydesign(ids = ~idperson, weights = ~1, data = yem_weighted)
 svy_style_w <- svydesign(ids = ~idperson, weights = ~weight_yem, data = yem_weighted)
 
-tibble(variable = c("employed", "dms", "dag", "ddi", "deh", "dgn"),
+tibble(variable = c("dag", "ddi", "deh", "dgn"),
        unweighted_design = list(svy_style_unw),
        weighted_design = list(svy_style_w)) |> 
   pivot_longer(ends_with("design"), names_to = "design", values_to = "svy_obj", names_pattern = "(.*)_design") |> 
   mutate(model = map2(variable, svy_obj, ~ svyglm(formula(paste("yem ~", .x)), .y)),
-         t_val = map_dbl(model, ~ summary(.x)$coefficients[2, "t value"])) |> 
-  select(variable, design, t_val) |> 
-  ggplot(aes(t_val, variable)) +
-  geom_point(aes(colour = design))
+         coefs = map(model, broom::tidy)) |>
+  unnest(coefs) |> 
+  select(variable, term, design, t_val = statistic) |>
+  filter(term != "(Intercept)") |> 
+  ggplot(aes(t_val, interaction(variable, term))) +
+  geom_point(aes(colour = design)) +
+  geom_vline(aes(linetype = "inner", xintercept = 1), colour = "grey") +
+  geom_vline(aes(linetype = "inner", xintercept = -1), colour = "grey") +
+  geom_vline(aes(linetype = "outer", xintercept = 10), colour = "darkgrey") +
+  geom_vline(aes(linetype = "outer", xintercept = -10), colour = "darkgrey") +
+  scale_linetype_manual("t", values = c("dashed", "dotted"), labels = c("1", 10))
 
 
 # Gamma has to be adjusted so that yem != 0
 ```
 
 
-## Constructing weights as a normal distribution
+## Normal distribution
 
 ```{r}
 mod3a <- lm(yem ~ employed + dms, data = test_df)
@@ -353,7 +366,11 @@ yem_weighted <- test_df |>
   mutate(wg0 = dnorm(yem, mean = mean0, sd = sd),
          wg1 = dnorm(yem, mean = mean1, sd = sd),
     weight_yem = wg0/wg1, .before = year)
+```
 
+### Testing fit
+
+```{r}
 svy_style_unw <- svydesign(ids = ~idperson, weights = ~1, data = yem_weighted)
 svy_style_w <- svydesign(ids = ~idperson, weights = ~weight_yem, data = yem_weighted)
 
@@ -362,14 +379,21 @@ tibble(variable = c("dag", "ddi", "deh", "dgn"),
        weighted_design = list(svy_style_w)) |> 
   pivot_longer(ends_with("design"), names_to = "design", values_to = "svy_obj", names_pattern = "(.*)_design") |> 
   mutate(model = map2(variable, svy_obj, ~ svyglm(formula(paste("yem ~", .x)), .y)),
-         t_val = map_dbl(model, ~ summary(.x)$coefficients[2, "t value"])) |> 
-  select(variable, design, t_val) |> 
-  ggplot(aes(t_val, variable)) +
-  geom_point(aes(colour = design))
+         coefs = map(model, broom::tidy)) |>
+  unnest(coefs) |> 
+  select(variable, term, design, t_val = statistic) |>
+  filter(term != "(Intercept)") |> 
+  ggplot(aes(t_val, interaction(variable, term))) +
+  geom_point(aes(colour = design)) +
+  geom_vline(aes(linetype = "inner", xintercept = 1), colour = "grey") +
+  geom_vline(aes(linetype = "inner", xintercept = -1), colour = "grey") +
+  geom_vline(aes(linetype = "outer", xintercept = 10), colour = "darkgrey") +
+  geom_vline(aes(linetype = "outer", xintercept = -10), colour = "darkgrey") +
+  scale_linetype_manual("t", values = c("dashed", "dotted"), labels = c("1", 10))
 
 ```
 
-## Constructing weights as a heteroscedastic normal
+## Heteroscedastic normal
 
 ### Estimating variance from loglinear model
 
@@ -391,28 +415,55 @@ yem_weighted <- test_df |>
   # mutate(sd = sd(yem)) |> # some group-specific sds
   mutate(wg0 = dnorm(yem, mean = mean0, sd = sd0),
          wg1 = dnorm(yem, mean = mean1, sd = sd1),
-    weight_yem = wg0/wg1, .before = year,
-    weight_yem = if_else(is.infinite(weight_yem), 1, weight_yem))
+    weight_yem = wg0/wg1, .before = year)
+```
+
+### Testing fit
+
+```{r}
+summary(yem_weighted$weight_yem)
+
+yem_weighted |> 
+  mutate(weight = case_when(
+    weight_yem == 0 ~ "Zero",
+    is.infinite(weight_yem) ~ "Infinite",
+    is.na(weight_yem) ~ "Missing",
+    .default = "Positive weight"
+  )) |> 
+  count(weight)
+
+yem_weighted <- 
+  yem_weighted |> 
+  filter(!is.infinite(weight_yem), !is.na(weight_yem), weight_yem < 0.01)
 
 svy_style_unw <- svydesign(ids = ~idperson, weights = ~1, data = yem_weighted)
 svy_style_w <- svydesign(ids = ~idperson, weights = ~weight_yem, data = yem_weighted)
 
 tibble(variable = c("dag", "ddi", "deh", "dgn"),
        unweighted_design = list(svy_style_unw),
-       weighted_design = list(svy_style_w)) |> 
-  pivot_longer(ends_with("design"), names_to = "design", values_to = "svy_obj", names_pattern = "(.*)_design") |> 
+       weighted_design = list(svy_style_w)) |>
+  pivot_longer(ends_with("design"), names_to = "design", values_to = "svy_obj", names_pattern = "(.*)_design") |>
   mutate(model = map2(variable, svy_obj, ~ svyglm(formula(paste("yem ~", .x)), .y)),
-         t_val = map_dbl(model, ~ summary(.x)$coefficients[2, "t value"])) |> 
-  select(variable, design, t_val) |> 
-  ggplot(aes(t_val, variable)) +
-  geom_point(aes(colour = design))
+         coefs = map(model, broom::tidy)) |>
+  unnest(coefs) |> 
+  select(variable, term, design, t_val = statistic) |>
+  filter(term != "(Intercept)") |> 
+  ggplot(aes(t_val, interaction(variable, term))) +
+  geom_point(aes(colour = design)) +
+  geom_vline(aes(linetype = "inner", xintercept = 1), colour = "grey") +
+  geom_vline(aes(linetype = "inner", xintercept = -1), colour = "grey") +
+  geom_vline(aes(linetype = "outer", xintercept = 10), colour = "darkgrey") +
+  geom_vline(aes(linetype = "outer", xintercept = -10), colour = "darkgrey") +
+  scale_linetype_manual("t", values = c("dashed", "dotted"), labels = c("1", 10))
 
 # Big problem here - sds are much smaller in these models so probabilities for large wages are ~0
 
 ```
 
+### Possible to predict variance from mlm?
 
 ```{r}
+#| eval: false
 library(nlme)
 # library(lme4)
 
@@ -422,9 +473,7 @@ mod_h_3a <- lme(fixed = yem ~ 1, random = ~ 1|employed/dms, data = test_df)
 mod_h_3a <- lme(yem ~  employed + dms, random = list(idperson = pdDiag(~employed/dms)), data = test_df)
 mod_h_3b <- lme(yem ~ employed + dms + dag + ddi + deh + dgn, random = list(idperson = pdDiag(~employed/dms/dag/ddi/deh/dgn)), data = test_df)
 
-```
 
-```{r}
 mod_h_3a |> 
   VarCorr()
 ```
