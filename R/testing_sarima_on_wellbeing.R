@@ -1,5 +1,6 @@
 library(tidyverse)
 library(lubridate)
+library(fst)
 
 apr11_mar21 <- c(
   "data/fst_files/apr11_mar12.fst",
@@ -23,10 +24,12 @@ apr11_mar21 <- c(
 apr11_mar21 |> 
   reduce(bind_rows) |> 
   mutate(across(satis:worth, ~ ifelse(.x == -9|.x == -8, NA, .x)),
-         Date = floor_date(dmy(refdte), "months")) |> 
+         Date = floor_date(dmy(refdte), "months"),
+         Year = year(Date)) |> 
+  filter(Year < 2020) |> 
   pivot_longer(satis:worth, names_to = "metric", values_to = "Score") |> 
   filter(!is.na(Score)) |> 
-  ggplot(aes(Date, Score)) +
+  ggplot(aes(Year, Score)) +
   stat_summary(geom = "pointrange", shape = 15,
                fun.data = mean_se) +
   facet_wrap(~metric, scale = "free_y")
