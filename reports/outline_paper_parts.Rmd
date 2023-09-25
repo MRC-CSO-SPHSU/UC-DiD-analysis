@@ -1,0 +1,297 @@
+---
+title: Examining the mental health impacts of Universal Credit, treating phased rollout
+  as a natural experiment
+author: "Andy Baxter, Sophie Wickham, Mandy Cheetham, Emma Coombes, Clare Bambra,
+  David Taylor-Robinson, Luke Munford, Huasheng Xiang, Mattheo Richiardi, Heather
+  Brown, Matthew Sutton, Benjamin Barr, Vittal Katikireddi, Peter Craig"
+date: "`r Sys.Date()`"
+output: 
+  word_document:
+    reference_docx: template_doc.docx
+bibliography: C:/andy_local/BibTeX files/APS_DiD_paper_files.bib
+csl: http://csl.mendeley.com/styles/481764751/harvard-cite-them-right
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Abstract
+
+#### Background
+
+Universal Credit was rolled out across the UK as a benefit system to
+replace six existing benefits. It aimed to consolidate and simplify
+benefit claim systems and encourage more claimants into work. Key
+changes from legacy benefit systems may be harmful to the mental health
+of claimants, or conversely, the push towards work may have beneficial
+effects. We aimed to test the causal effects of Universal Credit
+compared to legacy benefit systems, treating the phased rollout as a
+natural experiment.
+
+#### Methods
+
+We used difference-in-differences methods to test for changes in mental
+health and well-being using the measures of life satisfaction,
+happiness, anxiety and whether respondents felt their lives were
+worthwhile reported in the Annual Population Survey. We compared
+as-yet-untreated areas with UC-rollout areas by month across the natural
+migration phase. We conducted subgroup analyses to test for differential
+harms by claimant types and other vulnerabilities.
+
+#### Findings
+
+#### Interpretation
+
+#### Funding
+
+This research is supported by the UK National Institute of Health
+Research Public Health Research Programme, grant number NIHR131709.
+
+\newpage
+
+# Introduction
+
+Universal Credit (UC) was introduced as a new, replacement benefit
+system, combining multiple prior benefits into a single application and
+award scheme. Rollout began in 2013 and aimed to gradually migrate all
+claimants of a 'legacy benefit' -- Job Seekers Allowance, Working Tax
+Credit, Child Tax Credit, Housing Benefit, Income Support Allowance, or
+Income-based Employment Support Allowance -- to the new claims system
+[@NationalAuditOffice2018; @DepartmentforWork&Pensions2022a]. The UC
+system, in comparison with the legacy systems, is designed as a fully
+online application and claim-handling system. It aims to encourage more
+claimants into work by setting eligibility criteria, introducing a
+single 'taper' on awards as income increases, and making payments in
+lieu of each claim month, mimicking salary payments [@Wickham2020;
+@DepartmentforWork&Pensions2022a; @DepartmentforWork&Pensions2022].
+
+The change to Universal Credit may have negatively affected the health
+and wellbeing of some benefit recipients [@Wickham2020; @Brewer2022].
+Waits for first payments -- with the minimum 5-week assessment period
+plus administrative delays resulting in up to a 12-week wait
+[@NationalAuditOffice2018; @Cheetham2019] -- may be a potential cause of
+distress in low-income households. Incurred debt and ongoing struggles
+to keep up with payments may prolong this effect beyond the initial
+months [@DepartmentforWork&Pensions2018]. Increased work-search
+requirements might similarly impact mental health across the term of
+benefit receipt, potentially requiring action beyond claimants'
+capabilities or being perceived as 'hostile' and 'uncaring' in demanding
+justification for inaction [@Cheetham2019;
+@DepartmentforWork&Pensions2023]. The switch to fully-online claims
+system, perceived as "complicated, disorientating, impersonal, hostile
+and demeaning" [@Cheetham2019], may additionally have contributed to
+worsening mental health. Conversely, the aim to increased employment of
+benefit claimants may lead to improved mental health outcomes, both
+through support in applying for jobs and in less punitive reductions in
+benefits with increases in earned income
+[@DepartmentforWork&Pensions2022a].
+
+Treating the phased rollout as a stepped-wedge natural experiment, the
+causal effects of UC on mental health may be estimable using
+as-yet-unexposed areas as controls. Natural experimental methods divide
+populations into exposed and unexposed comparison groups using events
+outside of the control of the researcher [@Craig2017]. Using the planned
+UC 'natural migration' rollout timetable, potential benefit claimants
+can be classified as 'exposed' and 'unexposed' by determining whether UC
+had, at date of data collection, been implemented in the local authority
+area or not. Quantifying these effects would give a clearer picture of
+how much observed differences in mental health are attributable to the
+switch to a new benefit system and give an estimate of whether UC causes
+overall benefits or harms to claimants. Subgroup analyses of claimant
+types and other vulnerabilities can also identify at-risk groups and
+areas for preventative action. These findings could inform future
+changes to benefit systems to improve mental health outcomes.
+
+This study is part of Work Package 1 of an NIHR-funded study on
+evaluating the mental health impacts of Universal Credit grant number
+NIHR131709; @Craig2022].
+
+# Methods
+
+## Aim and research questions
+
+We aimed to estimate the Average Treatment Effects across Local
+Authority areas of Universal Credit on the mental health of people
+eligible to claim benefits. Additionally, we aimed to test differences
+in effect sizes across markers of vulnerability.
+
+### Research questions
+
+1.  What is the impact of UC rollout on the mental health and wellbeing
+    of working age adults?
+2.  Do effects vary across sex, age of claimant, pre-UC employment
+    status, household structure, disability and health status, and
+    country?
+3.  How does this effect vary in the time periods immediately before and
+    immediately following a switch to Universal Credit? Are there
+    anticipatory effects in the immediate pre-rollout period? Do
+    post-exposure effects change as time from rollout increases?
+
+## Protocol
+
+The analysis plan, along with code used in analysis, is archived at
+[osf.io/knajb](https://osf.io/knajb) [@Baxter2022].
+
+## Data
+
+We used data from the Annual Population Survey (APS) secure-access
+version collected between 2013-2019
+[@OfficeforNationalStatistics-SocialSurveyDivision2022]. These data are
+released as annual cross-sectional datasets, produced from the Labour
+Force Survey data collection [@OfficeforNationalStatistics2012]. APS
+responses record demographics, household and employment conditions,
+benefit receipt and the 'ONS4' well-being outcomes ['Life Satisfaction',
+'Worthwhile', 'Happiness' and 'Anxiety';
+@OfficeforNationalStatistics2018]. Data are collected using area-based
+quotas and record each observation's area of residence; this allows
+grouping of observations by Local Authority District, which match the
+area-wise Universal Credit rollouts announced for the 2015--2018 period
+[@DepartmentforWork&Pensions2018a].
+
+## Study design
+
+We used natural experimental methods to estimate the effects of the
+rollout of Universal Credit on mental health across all claimants and
+potential claimants. We treated the differences in treatment timing as a
+'target trial', evaluating how closely the phased rollout emulates a
+stepped wedge randomised controlled trial to assess the potential for
+bias in these comparisons (Hernán and Robins, 2016; Craig et al., 2019;
+Matthews et al., 2022). We determined the eligible population using two
+methods -- observation of any benefit receipt at any time point, and a
+logistic regression prediction of UC uptake under a simulated
+full-UC-rollout scenario using UKMOD (Centre for Microsimulation and
+Policy Analysis, 2022). We conducted a staggered
+difference-in-differences analysis, treating the UC 'natural migration'
+phased rollout period as a marker defining exposed and unexposed
+comparators (Callaway and Sant'Anna, 2021; Goodman-Bacon, 2021; Sun and
+Abraham, 2021). We compared changes in mental health in local authority
+areas in which Universal Credit had been introduced with changes in
+mental health in local authority areas in which Universal Credit had not
+yet been introduced. We explored differences in effects across subgroup
+characteristics marking potential differences in vulnerability to
+benefit changes and differences in reasons for claiming universal
+credit.
+
+## Determining the affected population
+
+To determine comparable populations of potential UC claimants across the
+observed years for inclusion, we used two definitions of population of
+interest, one using empirical methods of determining exposure and one
+using prediction methods.
+
+Under the empirical definition, the population of interest included all
+respondents who report claiming either a legacy benefit (Job Seeker's
+Allowance, Tax Credits, Housing Benefit, Income support, Income-based
+Employment and Support Allowance) or Universal Credit at any time point.
+A limitation of this method is that a potential claimant under one
+system may be ineligible (or have been disincentivised from applying)
+under the other. Under the intended outputs of UC in encouraging
+claimants into work, a person whose circumstances have been thus
+affected by the UC rollout might not be an observed claimant in the
+exposed period. Matching cross-sectional populations by observed benefit
+receipt may not create exchangeable populations. Additionally, benefit
+receipt may be differentially underreported under one or both systems.
+The alternative approach of using observed characteristics as
+straightforward markers of eligibility (for example, including all
+unemployed respondents) is hampered by missing data on housing costs,
+savings and partner's income which determine eligibility and payment
+amount.
+
+To overcome these potential biases, we used a machine-learning model
+trained on simulated data to predict the probability of a person
+receiving UC under a full-UC-rollout scenario. We used the UKMOD static
+tax-benefit microsimulation model to simulate benefit receipt for a
+donor population (from the Family Resources Survey) under a
+full-UC-rollout scenario from 2014 to 2019. We trained a model to
+predict probability of receipt of Universal Credit from a set of
+individual and household characteristics which were recorded in both the
+Family Resources Survey dataset and the APS dataset. We used this model
+to calculate a probability score for each observation in the APS dataset
+for receiving UC in the hypothetical scenario of exclusive and full UC
+availability across all years. We assigned this probability as a weight
+to each respondent to have a comparably weighted population across all
+years, giving greatest weight to those who were most likely to be
+affected by the changes in benefit systems.
+
+## Exposure
+
+The replacement of legacy benefits with UC broadly took place in three
+phases [@DepartmentforWork&Pensions2018a;
+@DepartmentforWork&Pensions2022a; @NationalAuditOffice2018]:
+
+-   The restricted rollout of the 'live service' from 2013 to a limited
+    subgroup, mainly single, childless claimants.
+-   The full-service 'natural migration' period from 2016 onwards --
+    open to all claimant types but only applied to new claimants,
+    existing claimants with changing circumstances necessitating a
+    change in claim, and voluntary benefit switchers.
+-   The concluding 'managed migration' phase, which was piloted in
+    2019-2020 but paused for the pandemic and restarted in 2022,
+    implementing a forced migration of all claimants to UC by 2024.
+
+Observing the whole eligible population, we proposed using the natural
+migration dates as markers of exposure to Universal Credit if the
+respondent lived in an area already exposed at the time of data
+collection. The dates by Job Centre Plus reported in the 'Universal
+Credit transition rollout schedule March 2018 to December 2018'
+(Department for Work & Pensions, 2018b) were used to determine a first
+exposed date for each Local Authority. These were matched to APS
+observations by Local authority district. Each observation was assigned
+a '1' for exposure if the reference date for that interview matched or
+followed the month of rollout and a '0' otherwise. Months from rollout
+were additionally assigned to each, individual, counting upwards from
+negative months to '0' in the month of planned natural migration in that
+district and a positive count of months following.
+
+## Outcomes
+
+The four wellbeing outcomes (Table 1) were recorded for each
+observation.
+
+| Label             | Question in survey                                                                        | Possible answers (on a scale of 0--10)                        |
+|----------------------|-------------------------|-------------------------|
+| Life Satisfaction | "Overall, how satisfied are you with your life nowadays?"                                 | 0 -- 'not at all satisfied' to 10 -- 'completely satisfied'   |
+| Worthwhile        | "Overall, to what extent do you feel that the things you do in your life are worthwhile?" | 0 -- 'not at all worthwhile' to 10 -- 'completely worthwhile' |
+| Happiness         | "How happy did you feel yesterday?"                                                       | 0 -- 'not at all happy' to 10 -- 'completely happy'           |
+| Anxiety           | "How anxious did you feel yesterday?"                                                     | 0 -- 'not at all anxious' to 10 -- 'completely anxious'       |
+
+Table 1 -- The four questions recording subjective wellbeing, recorded
+in the Annual Population Survey in data collected from April 2011.
+
+## Missing data
+
+We used multiple imputation methods to overcome potential biases due to
+missing data in our primary analyses. Data of interest was missing for
+x% of respondents. The variable with the highest rate of missingness was
+earned income, with data missing for x% of eligible respondents. We
+generated [20] imputed datasets.
+
+We additionally carried out a 'complete
+case' analysis of all observations with complete data. We compared
+effect estimates between complete and imputed samples to examine
+robustness of findings.
+
+## Statistical analysis
+
+We used difference-in-differences methods to estimate the effects of the
+introduction of Universal Credit on mental health and wellbeing. Two-way
+fixed-effects (TWFE) estimates compare exposed with non-yet-exposed
+units can ensure comparison of exchangeable units. However, in cases of
+varying treatment timing and effect size this can introduce error in
+estimating magnitude and direction of outcome (Goodman-Bacon, 2021; Roth
+et al., 2022). We ran TWFE models and examined effect estimate by
+treatment timing using decomposition to test for bias due to
+heterogeneous treatment effects. In further models, to overcome
+anticipated bias, we used the R package 'did2s' (Butts and Gardner,
+2021) to implement the methods of Callaway and Sant'Anna (2021) and
+'Two-stage differences in differences' approach by Gardner (2021) as two
+comparable alternatives. We used each method to estimate a static effect
+estimate across the four quarters following the rollout date in each
+Local Authority. We further used each method to produce a coefficient
+and standard error term for each quarterly period before and after
+introduction of Universal Credit to examine timings and patters of
+effects.
+
+\newpage
+
+# References
