@@ -16,6 +16,19 @@ model_data <- ukmod_tidy |>
   mutate(lba_income = sum(lba_income),
          uc_income = max(uc_income),
          uc_receipt = factor(max(uc_receipt)),
+         hh_income = sum(income),
+         i_c = cut(
+           hh_income,
+           c(0, 1, 500, 1000, 2000, 3000, 20000),
+           right = FALSE,
+           include.lowest = TRUE,
+           labels = c("0",
+                      "1-499",
+                      "500-999",
+                      "1000-1999",
+                      "2000-2999",
+                      "3000+")
+         ),
          n_hh_emp = sum(employment == "Employed"),
          n_hh_unemp = sum(employment == "Unemployed"),
          n_hh_inact = sum(employment == "Inactive")) |> 

@@ -70,3 +70,4 @@ full_dataset |>
   select(sumhrs, inecac05) |> 
   mutate(sumhrsna = if_else(sumhrs == -8, 1, 0)) |> 
   summarise(sum(sumhrsna)/n())
+
