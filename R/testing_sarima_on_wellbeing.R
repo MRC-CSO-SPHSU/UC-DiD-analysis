@@ -1,5 +1,6 @@
 library(tidyverse)
 library(lubridate)
+library(data.table)
 library(fst)
 
 apr11_mar21 <- c(
@@ -79,8 +80,8 @@ plot(diff(diff(bare$score, 12)), type = "l")
 
 acf2(diff(diff(bare$score, 12)))
 
-mod1 <- auto.arima(bare$score[1:50], 
-           # xreg = as.matrix(c("exp", "t_exp")]),
+mod1 <- auto.arima(bare$score, 
+           xreg = as.matrix(bare[c("exp", "t_exp")]),
            approximation = FALSE, allowdrift = FALSE,
            seasonal = TRUE, trace = TRUE)
 
