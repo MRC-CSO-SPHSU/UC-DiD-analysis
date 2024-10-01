@@ -72,7 +72,7 @@ apr14_mar21_dt <- apr14_mar21 |>
   mutate(date = floor_date(dmy(refdte), "months")) |> 
   data.table()
 
-apr14_mar21_dt <- apr14_mar21_dt[age > 17 & age < 66]
+apr14_mar21_dt <- apr14_mar21_dt[age >= 16 & age <= 64]
 
 apr14_mar21_dt[,uc := rowSums(.SD == 1), .SD = 2:11]
 apr14_mar21_dt[,tax_cr := rowSums(.SD == 3), .SD = 2:11]
@@ -137,8 +137,8 @@ patch +
                   subtitle = "April 2014 - March 2021")
 
 
-ggsave(filename = "graphs/proporrions_benefit_type_weighted.png", width = 20, height = 24,
-       units = "cm", dpi = 400)
+# ggsave(filename = "graphs/proporrions_benefit_type_weighted.png", width = 20, height = 24,
+       # units = "cm", dpi = 400)
 
 
 (n_claim <- apr14_mar21_dt |> 
@@ -214,4 +214,4 @@ comb_uc_rec |>
   plot_annotation(title = "Proportions of working-age adults reporting receiving UC vs observed rates",
                   subtitle = "April 2014 - March 2021")
 
-ggsave(filename = "graphs/comparison_uc_reporting.png", width = 20, height = 10, dpi = 400, units = "cm")
+# ggsave(filename = "graphs/comparison_uc_reporting.png", width = 20, height = 10, dpi = 400, units = "cm")
