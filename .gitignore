@@ -7,3 +7,7 @@
 /graphs
 /output/*
 *_reprex.*
+*.pdf
+*.docx
+test*
+*.do
